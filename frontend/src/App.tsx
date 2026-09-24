@@ -64,7 +64,7 @@ function Dashboard({ status }: { status: HealthStatus }) {
       <section className="intro-grid">
         <div>
           <span className="eyebrow">Research Data Management System</span>
-          <h1>让实验记录，沿着证据生长。</h1>
+          <h1>研究数据管理系统</h1>
           <p className="lede">
             保存实验、化合物、样品、反应与原始文件，并沿着关联查找证据。
           </p>
