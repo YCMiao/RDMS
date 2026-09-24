@@ -75,4 +75,31 @@ describe("experiment editor", () => {
     expect(sent[0]).toMatchObject({ name: "联苯", tag_ids: [] })
     expect(sent[0]).not.toHaveProperty("compound_code")
   })
+
+  it("shows two decimals without changing the stored weight on an unrelated edit", async () => {
+    const compound = {
+      id: "6035a847-5220-484b-84a0-df2b148f55aa", compound_code: "CMP-000001",
+      name: "测试化合物", smiles: null, molecular_formula: "C10H10", molecular_weight: "154.21000000",
+      structure_molfile: null, exact_mass: null, inchi_key: null, cas_number: null, cas_source: null,
+      physical_properties: [], notes: null, tags: [], version: 1,
+      created_at: "2026-09-23T00:00:00Z", updated_at: "2026-09-23T00:00:00Z",
+    }
+    const sent: Record<string, unknown>[] = []
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const path = String(input)
+      if (path === `/api/compounds/${compound.id}` && init?.method === "PATCH") {
+        sent.push(JSON.parse(String(init.body)) as Record<string, unknown>)
+        return new Response(JSON.stringify({ ...compound, ...sent[0], version: 2 }))
+      }
+      if (path === `/api/compounds/${compound.id}`) return new Response(JSON.stringify(compound))
+      return new Response(JSON.stringify({ items: [], total: 0, page: 1, page_size: 20 }))
+    })
+    render(<MemoryRouter initialEntries={[`/compounds/${compound.id}`]}><Routes><Route path="/compounds/:id" element={<RecordEditor kind="compounds" />} /></Routes></MemoryRouter>)
+    const weight = await screen.findByRole("textbox", { name: "分子量 (g/mol)" })
+    expect(weight).toHaveValue("154.21")
+    await userEvent.type(screen.getByRole("textbox", { name: /名称/ }), " A")
+    await userEvent.click(screen.getByRole("button", { name: "保存修改" }))
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0].molecular_weight).toBe("154.21000000")
+  })
 })

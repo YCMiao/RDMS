@@ -151,7 +151,7 @@ def records_page(
         fields = (
             (Experiment.title, Experiment.experiment_code)
             if model is Experiment
-            else (Compound.name, Compound.compound_code, Compound.smiles)
+            else (Compound.name, Compound.compound_code, Compound.smiles, Compound.cas_number)
         )
         stmt = stmt.where(or_(*(field.ilike(pattern, escape="\\") for field in fields)))
     if tag_id:

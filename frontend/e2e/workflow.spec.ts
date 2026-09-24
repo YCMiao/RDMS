@@ -1,6 +1,50 @@
 import { createHash } from "node:crypto"
 import { expect, test } from "@playwright/test"
 
+test("从结构粘贴建立化合物并检测重复", async ({ page, request }) => {
+  await page.goto("/compounds/import")
+  await page.getByRole("textbox", { name: "化学结构文本" }).fill("CCO")
+  await page.getByRole("button", { name: "解析结构" }).click()
+  await expect(page.getByText("C2H6O")).toBeVisible()
+  await expect(page.getByText("LFQSCWFLJHTTHZ-UHFFFAOYSA-N")).toBeVisible()
+  await expect(page.getByText("46.07 g/mol")).toBeVisible()
+  await expect(page.getByText("46.0419")).toBeVisible()
+  await page.getByRole("textbox", { name: /名称/ }).fill("结构导入乙醇")
+  await page.getByRole("button", { name: "创建化合物" }).click()
+  await expect(page).toHaveURL(/\/compounds\/[0-9a-f-]+$/)
+  const id = page.url().split("/").at(-1)!
+  await expect(page.getByRole("img", { name: /二维化学结构/ })).toBeVisible()
+  await expect(page.getByText("46.07 g/mol")).toBeVisible()
+  await expect(page.getByText("46.0419")).toBeVisible()
+  const compound = await (await request.get(`/api/compounds/${id}`)).json()
+  expect(compound.molecular_formula).toBe("C2H6O")
+  expect(compound.structure_molfile).toContain("M  END")
+
+  await page.goto("/compounds")
+  await expect(page.getByRole("row", { name: /结构导入乙醇/ }).getByRole("cell", { name: "46.07" })).toBeVisible()
+
+  await page.goto("/compounds/import")
+  await page.getByRole("textbox", { name: "化学结构文本" }).fill("CCO")
+  await page.getByRole("button", { name: "解析结构" }).click()
+  await expect(page.getByText("发现已有相同结构")).toBeVisible()
+  await expect(page.getByRole("link", { name: /结构导入乙醇/ })).toHaveAttribute("href", `/compounds/${id}`)
+})
+
+test("实验反应式展示结构、试剂和处理步骤", async ({ page, request }) => {
+  const preview = await (await request.post("/api/compounds/structure/preview", { data: { structure: "CCO", format: "smiles" } })).json()
+  const compound = await (await request.post("/api/compounds", { data: { name: `反应式乙醇 ${Date.now()}`, structure_molfile: preview.structure_molfile, tag_ids: [] } })).json()
+  const experiment = await (await request.post("/api/experiments", { data: { title: `反应式验证 ${Date.now()}`, date: "2026-09-24", tag_ids: [] } })).json()
+  const reaction = await (await request.post(`/api/experiments/${experiment.id}/reactions`, { data: { reaction_name: "氧化测试", temperature_c: "25", workup: "加水淬灭", purification: "硅胶柱" } })).json()
+  await request.post(`/api/reactions/${reaction.id}/components`, { data: { compound_id: compound.id, role: "substrate", equivalents: "1.0" } })
+  await page.goto(`/experiments/${experiment.id}`)
+  const scheme = page.getByLabel("反应式", { exact: true })
+  await expect(scheme.getByRole("img", { name: /化学结构/ })).toBeVisible()
+  await expect(scheme).toContainText("25.00000000 °C")
+  await expect(scheme).toContainText("1.00000000 eq")
+  await expect(page.getByLabel("后处理")).toHaveValue("加水淬灭")
+  await expect(page.getByLabel("纯化")).toHaveValue("硅胶柱")
+})
+
 test("科研记录从创建、文件字节到删除恢复的真实闭环", async ({ page, request }) => {
   const title = `浏览器闭环实验 ${Date.now()}`
   const compoundName = `联苯-${Date.now()}`
@@ -45,7 +89,15 @@ test("科研记录从创建、文件字节到删除恢复的真实闭环", async
   await reaction.getByLabel("角色").selectOption("product")
   await reaction.getByLabel("收率 %").fill("72.50")
   await reaction.getByRole("button", { name: "添加组分" }).click()
-  await expect(reaction.getByText("72.50000000")).toBeVisible()
+  await expect(reaction.locator("table").getByText("72.50000000")).toBeVisible()
+  await expect(reaction.getByLabel("反应式", { exact: true })).toBeVisible()
+  await reaction.getByLabel("后处理").fill("饱和氯化铵淬灭，乙酸乙酯萃取")
+  await reaction.getByLabel("纯化").fill("硅胶柱，石油醚/乙酸乙酯 4:1")
+  await reaction.getByRole("button", { name: "保存反应" }).click()
+  const reactionList = await (await request.get(`/api/experiments/${experimentId}/reactions`)).json()
+  const savedReaction = await (await request.get(`/api/reactions/${reactionList.items[0].id}`)).json()
+  expect(savedReaction.workup).toContain("乙酸乙酯萃取")
+  expect(savedReaction.purification).toContain("硅胶柱")
 
   const files = page.locator("section.relation-section").filter({ has: page.getByRole("heading", { name: "原始文件" }) })
   await files.getByLabel("选择原始文件").setInputFiles({ name: "闭环原件.txt", mimeType: "text/plain", buffer: original })

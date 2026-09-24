@@ -90,7 +90,20 @@ def output(session: Session, record: Experiment | Compound) -> dict[str, Any]:
             "status",
         )
         if isinstance(record, Experiment)
-        else ("compound_code", "name", "smiles", "molecular_formula", "molecular_weight", "notes")
+        else (
+            "compound_code",
+            "name",
+            "smiles",
+            "molecular_formula",
+            "molecular_weight",
+            "notes",
+            "structure_molfile",
+            "inchi_key",
+            "exact_mass",
+            "cas_number",
+            "cas_source",
+            "physical_properties",
+        )
     )
     result = {
         key: getattr(record, key) for key in ("id", "created_at", "updated_at", "version", *keys)
@@ -151,6 +164,18 @@ def create_record(
     payload: ExperimentFields | CompoundFields,
 ) -> dict[str, Any]:
     values = payload.model_dump(exclude={"tag_ids"})
+    if model is Compound and values.get("structure_molfile"):
+        from app.services.chemistry import parse_structure
+
+        parsed = parse_structure(values["structure_molfile"], "molfile")
+        values.update(
+            structure_molfile=parsed.molfile,
+            smiles=parsed.smiles,
+            molecular_formula=parsed.molecular_formula,
+            molecular_weight=parsed.molecular_weight,
+            exact_mass=parsed.exact_mass,
+            inchi_key=parsed.inchi_key,
+        )
     record = model(
         **values,
         **(
@@ -176,6 +201,39 @@ def update_record(
     record = lock_record(session, model, record_id)
     check_version(record, payload.expected_version)
     values = payload.model_dump(exclude_unset=True, exclude={"expected_version", "tag_ids"})
+    if (
+        isinstance(record, Compound)
+        and record.structure_molfile
+        and "structure_molfile" not in values
+    ):
+        for derived in ("smiles", "molecular_formula", "molecular_weight"):
+            values.pop(derived, None)
+    if model is Compound and "structure_molfile" in values:
+        if values["structure_molfile"]:
+            from app.services.chemistry import parse_structure
+
+            parsed = parse_structure(values["structure_molfile"], "molfile")
+            values.update(
+                structure_molfile=parsed.molfile,
+                smiles=parsed.smiles,
+                molecular_formula=parsed.molecular_formula,
+                molecular_weight=parsed.molecular_weight,
+                exact_mass=parsed.exact_mass,
+                inchi_key=parsed.inchi_key,
+            )
+            if isinstance(record, Compound) and record.inchi_key != parsed.inchi_key:
+                values.setdefault("cas_number", None)
+                values.setdefault("cas_source", None)
+                values.setdefault("physical_properties", [])
+        else:
+            values.update(
+                structure_molfile=None,
+                inchi_key=None,
+                exact_mass=None,
+                cas_number=None,
+                cas_source=None,
+                physical_properties=[],
+            )
     if "date" in values and values["date"] is None:
         raise RecordError(422, "VALIDATION_ERROR", "日期不能为空")
     for field in (

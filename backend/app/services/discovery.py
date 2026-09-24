@@ -174,6 +174,8 @@ def markdown(summary: SummaryOut) -> str:
                 f"温度：{value(reaction.temperature_c)} °C；"
                 f"时间：{value(reaction.reaction_time_hours)} h；"
                 f"气氛：{value(reaction.atmosphere)}；溶剂：{value(reaction.solvent)}",
+                f"后处理：{value(reaction.workup)}",
+                f"纯化：{value(reaction.purification)}",
                 f"备注：{value(reaction.notes)}",
             ]
         )

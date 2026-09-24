@@ -1,0 +1,165 @@
+"""Explicit, read-only lookups against fixed public chemistry sources."""
+
+import json
+import re
+from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote
+from urllib.request import Request, urlopen
+
+from app.core.config import get_settings
+
+CAS_PATTERN = re.compile(r"^\d{2,7}-\d{2}-\d$")
+
+
+def _read_json(url: str, *, api_key: str | None = None) -> dict[str, Any]:
+    headers = {"User-Agent": "RDMS/0.1 (personal chemistry records)", "Accept": "application/json"}
+    if api_key:
+        headers["X-API-KEY"] = api_key
+    try:
+        with urlopen(Request(url, headers=headers), timeout=8) as response:
+            raw = response.read(2_000_001)
+    except (HTTPError, URLError, TimeoutError) as exc:
+        raise LookupError("公开资料服务暂不可用") from exc
+    if len(raw) > 2_000_000:
+        raise LookupError("公开资料响应超过大小限制")
+    try:
+        result = json.loads(raw)
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise LookupError("公开资料格式无效") from exc
+    if not isinstance(result, dict):
+        raise LookupError("公开资料格式无效")
+    return result
+
+
+def _valid_cas(value: str) -> bool:
+    if not CAS_PATTERN.fullmatch(value):
+        return False
+    digits = value.replace("-", "")
+    return sum(
+        int(digit) * index for index, digit in enumerate(reversed(digits[:-1]), 1)
+    ) % 10 == int(digits[-1])
+
+
+def _strings(section: Any) -> list[str]:
+    """Extract display strings from PUG View's nested annotations."""
+    if isinstance(section, list):
+        return [value for item in section for value in _strings(item)]
+    if not isinstance(section, dict):
+        return []
+    values: list[str] = []
+    marked = section.get("StringWithMarkup")
+    if isinstance(marked, list):
+        values.extend(
+            item["String"]
+            for item in marked
+            if isinstance(item, dict) and isinstance(item.get("String"), str)
+        )
+    for key in ("Section", "Information", "Value"):
+        if key in section:
+            values.extend(_strings(section[key]))
+    return values
+
+
+def lookup(inchi_key: str) -> dict[str, Any]:
+    candidates: list[dict[str, str]] = []
+    properties: list[dict[str, str | None]] = []
+    warnings: list[str] = []
+    cas_key = get_settings().cas_common_chemistry_api_key
+    if cas_key:
+        try:
+            query = quote(f"InChIKey={inchi_key}", safe="")
+            search = _read_json(
+                f"https://commonchemistry.cas.org/api/search?q={query}", api_key=cas_key
+            )
+            for result in search.get("results", [])[:5]:
+                if not isinstance(result, dict):
+                    continue
+                rn = result.get("rn")
+                if not isinstance(rn, str) or not _valid_cas(rn):
+                    continue
+                detail = _read_json(
+                    f"https://commonchemistry.cas.org/api/detail?cas_rn={quote(rn)}",
+                    api_key=cas_key,
+                )
+                if str(detail.get("inchiKey", "")).removeprefix("InChIKey=") != inchi_key:
+                    continue
+                url = f"https://commonchemistry.cas.org/detail?cas_rn={rn}"
+                candidates.append(
+                    {
+                        "cas_number": rn,
+                        "name": str(detail.get("name") or result.get("name") or rn),
+                        "source": "CAS Common Chemistry",
+                        "source_url": url,
+                    }
+                )
+                for item in detail.get("experimentalProperties", [])[:10]:
+                    if (
+                        isinstance(item, dict)
+                        and isinstance(item.get("name"), str)
+                        and isinstance(item.get("property"), str)
+                    ):
+                        properties.append(
+                            {
+                                "name": item["name"][:80],
+                                "value": item["property"][:500],
+                                "source": "CAS Common Chemistry",
+                                "source_url": url,
+                            }
+                        )
+        except (LookupError, TypeError, ValueError, KeyError):
+            warnings.append("CAS Common Chemistry 当前不可用，可稍后重试")
+    else:
+        warnings.append("未配置 CAS Common Chemistry 密钥；PubChem 的 CAS 候选需要人工核对")
+
+    pubchem_cid: int | None = None
+    try:
+        ids = _read_json(
+            f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/inchikey/{inchi_key}/cids/JSON"
+        )
+        found = ids.get("IdentifierList", {}).get("CID", [])
+        if found and isinstance(found[0], int):
+            pubchem_cid = found[0]
+            url = f"https://pubchem.ncbi.nlm.nih.gov/compound/{pubchem_cid}"
+            synonyms = _read_json(
+                f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{pubchem_cid}/synonyms/JSON"
+            )
+            info = synonyms.get("InformationList", {}).get("Information", [])
+            names = info[0].get("Synonym", []) if info and isinstance(info[0], dict) else []
+            existing = {item["cas_number"] for item in candidates}
+            for name in names:
+                if isinstance(name, str) and _valid_cas(name) and name not in existing:
+                    candidates.append(
+                        {
+                            "cas_number": name,
+                            "name": name,
+                            "source": "PubChem 同义词（待核对）",
+                            "source_url": url,
+                        }
+                    )
+                    existing.add(name)
+                if len(candidates) >= 8:
+                    break
+            try:
+                density = _read_json(
+                    f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{pubchem_cid}/JSON?heading=Density"
+                )
+                for value in _strings(density.get("Record", {}))[:3]:
+                    properties.append(
+                        {
+                            "name": "Density",
+                            "value": value[:500],
+                            "source": "PubChem",
+                            "source_url": url,
+                        }
+                    )
+            except LookupError:
+                pass
+    except (LookupError, TypeError, ValueError, KeyError):
+        warnings.append("PubChem 当前不可用，仍可保存本机计算的结构资料")
+    return {
+        "candidates": candidates[:8],
+        "properties": properties[:20],
+        "pubchem_cid": pubchem_cid,
+        "warnings": warnings,
+    }

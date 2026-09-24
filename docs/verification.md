@@ -1,6 +1,6 @@
 # 最终验收索引（2026-09-24）
 
-所有表内“通过”均有实测记录。统一入口 `scripts/check.sh all` 在 2026-09-24 退出码 0：Ruff、mypy、PostgreSQL pytest 26 项；ESLint、TypeScript、Vitest 10 项与生产构建；独立 PostgreSQL/上传临时文件系统上的 Playwright 3 项。新增本机 Host/写入 Origin 边界测试；各阶段的原始执行过程与失败修复见 [PROGRESS.md](../PROGRESS.md)。
+所有表内“通过”均有实测记录。统一入口 `scripts/check.sh all` 在 2026-09-24 最近一次退出码 0：Ruff、mypy、独立 PostgreSQL pytest 29 项；ESLint、TypeScript、Vitest 13 项与生产构建；独立 PostgreSQL/上传临时文件系统上的 Playwright 5 项。各阶段的原始执行过程与失败修复见 [PROGRESS.md](../PROGRESS.md)。
 
 | 验收 ID | 实测证据 |
 |---|---|
@@ -34,5 +34,8 @@
 | UI-01 | 同文件检查 1280×800、1440×900、浅/深色实验表格及按钮对比、长标题/SMILES 无页面横向溢出、中文文件名、键盘焦点、空搜索、网络失败和 409 提示；截图在 `frontend/test-results/`。 |
 | DOC-01 | README 含配置、启动、全套检查及备份/恢复；`rdms08fresh` 用独立空卷和目录按步骤启动、停止/重启并实测记录及文件哈希。 |
 | LOCAL-01 | `backend/tests/test_local_request_boundary.py` 验证非本机 Host 和跨站写入返回 403、无数据库写入，同源浏览器请求和无 Origin 本机命令行请求可用；部署后实测 `/api/health/ready` 为 200，跨站写入为 403。 |
+| CHEM-01 | `backend/tests/test_compound_chemistry.py` 验证结构解析、派生值重算、重复检测、CAS 搜索及显式查询；`frontend/e2e/workflow.spec.ts` 在隔离浏览器中完成结构建档与重复提示。2026-09-24 `scripts/check.sh all` 退出 0：后端 29 项、前端 10 项、Playwright 4 项。默认服务迁移到 `3a4d8c1e6f20` 后健康；公开乙醇 InChIKey 实测 PubChem 返回 CID 702、CAS 候选及密度原文。CAS Common Chemistry 真密钥未配置，尚未做带密钥实测。 |
+| EXP-01 | `backend/tests/test_stage04_lab.py` 验证反应后处理和纯化创建、更新、清空；`test_stage06_discovery.py` 验证摘要包含这两个字段；`frontend/e2e/workflow.spec.ts` 验证结构图、当量、条件及后处理在实验详情出现。最近一次 `scripts/check.sh all` 退出码 0；默认库迁移到 `6b4f2c9e1d07` 后健康，实验、化合物、反应记录数仍为 0。 |
+| MASS-01 | `frontend/src/lib/format-mass.test.ts` 验证分子量最多 2 位、精确质量最多 4 位且不补尾零；`frontend/src/features/records.test.tsx` 验证仅编辑名称时原始分子量不被显示值覆盖；`frontend/e2e/workflow.spec.ts` 验证结构预览、详情和列表显示。 |
 
 隔离目标均只含合成数据；默认本机应用项目的数据库卷和上传根未用于验收写入。原始 `prompt0922.docx` SHA256 为 `711adf58248533f75ff40375fcc5374b71732073a143ac1cd44e6079ced10be9`。

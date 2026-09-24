@@ -14,7 +14,9 @@ import { useEffect, useState } from "react"
 import { Link, NavLink, Route, Routes, useNavigate } from "react-router-dom"
 
 import { Button } from "./components/ui/button"
+import { EmptyPanel } from "./components/empty-panel"
 import { RecordEditor, RecordList, TagManager } from "./features/records"
+import { CompoundImportPage } from "./features/compound-chemistry"
 import { SamplesPage, SampleEditor } from "./features/lab"
 import { FilesPage, FileEditor } from "./features/files"
 import { SearchPage } from "./features/discovery"
@@ -92,7 +94,7 @@ function Dashboard({ status }: { status: HealthStatus }) {
         ] as const).map(([label, count, path]) => <article key={label}><span>{label}</span><h2>{count}</h2><Link className="text-link" to={path}>查看{label}</Link></article>)}
       </section>
 
-      {data && <section className="intro-grid"><article className="relation-section"><h2>最近实验</h2>{data.recent_experiments.length ? data.recent_experiments.map(item => <p key={item.id}><Link to={`/experiments/${item.id}`}>{item.experiment_code} · {item.title}</Link></p>) : <p>暂无实验。</p>}</article><article className="relation-section"><h2>最近文件</h2>{data.recent_files.length ? data.recent_files.map(item => <p key={item.id}><Link to={`/files/${item.id}`}>{item.original_filename}</Link></p>) : <p>暂无文件。</p>}</article></section>}
+      {data && <section className="intro-grid"><article className="relation-section"><h2>最近实验</h2>{data.recent_experiments.length ? data.recent_experiments.map(item => <p key={item.id}><Link to={`/experiments/${item.id}`}>{item.experiment_code} · {item.title}</Link></p>) : <EmptyPanel icon={FlaskConical} title="还没有实验" description="创建实验后，最近记录会显示在这里。" />}</article><article className="relation-section"><h2>最近文件</h2>{data.recent_files.length ? data.recent_files.map(item => <p key={item.id}><Link to={`/files/${item.id}`}>{item.original_filename}</Link></p>) : <EmptyPanel icon={FolderArchive} title="还没有文件" description="为实验上传原始文件后，会显示在这里。" />}</article></section>}
 
       <section className="next-panel">
         <div>
@@ -181,6 +183,7 @@ export default function App() {
           <Route path="/experiments/new" element={<RecordEditor kind="experiments" />} />
           <Route path="/experiments/:id" element={<RecordEditor kind="experiments" />} />
           <Route path="/compounds" element={<RecordList kind="compounds" />} />
+          <Route path="/compounds/import" element={<CompoundImportPage />} />
           <Route path="/compounds/new" element={<RecordEditor kind="compounds" />} />
           <Route path="/compounds/:id" element={<RecordEditor kind="compounds" />} />
           <Route path="/settings" element={<TagManager />} />

@@ -1,6 +1,8 @@
+import { FolderOpen } from "lucide-react"
 import { useEffect, useState, type FormEvent } from "react"
 import { Link, useParams } from "react-router-dom"
 import { Button } from "../components/ui/button"
+import { EmptyPanel } from "../components/empty-panel"
 import { query, request, type Experiment, type Page } from "../services/records"
 import type { components } from "../types/api.generated"
 
@@ -10,7 +12,7 @@ const errorText = (reason: unknown) => reason instanceof Error ? reason.message 
 
 function FileTable({ data, onChange }: { data: Page<FileItem> | null; onChange?: () => void }) {
   if (!data) return <p>正在载入文件…</p>
-  if (!data.items.length) return <p>暂无文件。</p>
+  if (!data.items.length) return <EmptyPanel icon={FolderOpen} title="还没有文件" description="选择实验并上传原始文件后，记录会显示在这里。" />
   return <div className="table-scroll"><table><thead><tr><th>原文件名</th><th>类型</th><th>大小</th><th>上传时间</th><th>操作</th></tr></thead><tbody>{data.items.map(item => <tr key={item.id}><td><Link to={`/files/${item.id}`}>{item.original_filename}</Link></td><td>{item.file_type}</td><td>{item.file_size.toLocaleString()} B</td><td>{item.uploaded_at.slice(0, 10)}</td><td><a href={item.download_url} download={item.original_filename}>下载</a>{onChange && <Button type="button" variant="outline" onClick={onChange}>刷新</Button>}</td></tr>)}</tbody></table></div>
 }
 

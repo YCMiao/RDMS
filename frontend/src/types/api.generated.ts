@@ -268,6 +268,57 @@ export interface paths {
         patch: operations["patch_tag_api_tags__tag_id__patch"];
         trace?: never;
     };
+    "/api/compounds/structure/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview */
+        post: operations["preview_api_compounds_structure_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/compounds/structure/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lookup Structure */
+        post: operations["lookup_structure_api_compounds_structure_lookup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/compounds/{record_id}/structure.svg": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Compound Svg */
+        get: operations["compound_svg_api_compounds__record_id__structure_svg_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/samples": {
         parameters: {
             query?: never;
@@ -603,6 +654,17 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
+        /** CasCandidate */
+        CasCandidate: {
+            /** Cas Number */
+            cas_number: string;
+            /** Name */
+            name: string;
+            /** Source */
+            source: string;
+            /** Source Url */
+            source_url: string;
+        };
         /** ComponentFields */
         ComponentFields: {
             /**
@@ -714,6 +776,14 @@ export interface components {
             molecular_weight?: number | string | null;
             /** Notes */
             notes?: string | null;
+            /** Structure Molfile */
+            structure_molfile?: string | null;
+            /** Cas Number */
+            cas_number?: string | null;
+            /** Cas Source */
+            cas_source?: string | null;
+            /** Physical Properties */
+            physical_properties?: components["schemas"]["CompoundProperty"][];
             /** Tag Ids */
             tag_ids?: string[];
         };
@@ -750,6 +820,18 @@ export interface components {
             molecular_weight: string | null;
             /** Notes */
             notes: string | null;
+            /** Structure Molfile */
+            structure_molfile: string | null;
+            /** Inchi Key */
+            inchi_key: string | null;
+            /** Exact Mass */
+            exact_mass: string | null;
+            /** Cas Number */
+            cas_number: string | null;
+            /** Cas Source */
+            cas_source: string | null;
+            /** Physical Properties */
+            physical_properties: components["schemas"]["CompoundProperty"][];
         };
         /** CompoundPatch */
         CompoundPatch: {
@@ -765,8 +847,27 @@ export interface components {
             molecular_weight?: number | string | null;
             /** Notes */
             notes?: string | null;
+            /** Structure Molfile */
+            structure_molfile?: string | null;
+            /** Cas Number */
+            cas_number?: string | null;
+            /** Cas Source */
+            cas_source?: string | null;
+            /** Physical Properties */
+            physical_properties?: components["schemas"]["CompoundProperty"][] | null;
             /** Tag Ids */
             tag_ids?: string[] | null;
+        };
+        /** CompoundProperty */
+        CompoundProperty: {
+            /** Name */
+            name: string;
+            /** Value */
+            value: string;
+            /** Source */
+            source: string;
+            /** Source Url */
+            source_url?: string | null;
         };
         /** DashboardOut */
         DashboardOut: {
@@ -780,6 +881,15 @@ export interface components {
             recent_experiments: components["schemas"]["ExperimentOut"][];
             /** Recent Files */
             recent_files: components["schemas"]["FileOut"][];
+        };
+        /** DuplicateOut */
+        DuplicateOut: {
+            /** Id */
+            id: string;
+            /** Compound Code */
+            compound_code: string;
+            /** Name */
+            name: string;
         };
         /** ExperimentFields */
         ExperimentFields: {
@@ -960,6 +1070,22 @@ export interface components {
              * Format: uuid
              */
             compound_id: string;
+        };
+        /** LookupInput */
+        LookupInput: {
+            /** Inchi Key */
+            inchi_key: string;
+        };
+        /** LookupResult */
+        LookupResult: {
+            /** Candidates */
+            candidates: components["schemas"]["CasCandidate"][];
+            /** Properties */
+            properties: components["schemas"]["SourceValue"][];
+            /** Pubchem Cid */
+            pubchem_cid: number | null;
+            /** Warnings */
+            warnings: string[];
         };
         /** Page[ComponentOut] */
         Page_ComponentOut_: {
@@ -1142,6 +1268,10 @@ export interface components {
             atmosphere?: string | null;
             /** Solvent */
             solvent?: string | null;
+            /** Workup */
+            workup?: string | null;
+            /** Purification */
+            purification?: string | null;
             /** Notes */
             notes?: string | null;
         };
@@ -1179,6 +1309,10 @@ export interface components {
             atmosphere: string | null;
             /** Solvent */
             solvent: string | null;
+            /** Workup */
+            workup: string | null;
+            /** Purification */
+            purification: string | null;
             /** Notes */
             notes: string | null;
         };
@@ -1196,6 +1330,10 @@ export interface components {
             atmosphere?: string | null;
             /** Solvent */
             solvent?: string | null;
+            /** Workup */
+            workup?: string | null;
+            /** Purification */
+            purification?: string | null;
             /** Notes */
             notes?: string | null;
         };
@@ -1351,6 +1489,18 @@ export interface components {
             molecular_weight: string | null;
             /** Notes */
             notes: string | null;
+            /** Structure Molfile */
+            structure_molfile: string | null;
+            /** Inchi Key */
+            inchi_key: string | null;
+            /** Exact Mass */
+            exact_mass: string | null;
+            /** Cas Number */
+            cas_number: string | null;
+            /** Cas Source */
+            cas_source: string | null;
+            /** Physical Properties */
+            physical_properties: components["schemas"]["CompoundProperty"][];
             /** Matched Fields */
             matched_fields: ("name" | "compound_code" | "smiles")[];
         };
@@ -1405,6 +1555,47 @@ export interface components {
             query: string;
             experiments: components["schemas"]["Page_SearchExperimentOut_"];
             compounds: components["schemas"]["Page_SearchCompoundOut_"];
+        };
+        /** SourceValue */
+        SourceValue: {
+            /** Name */
+            name: string;
+            /** Value */
+            value: string;
+            /** Source */
+            source: string;
+            /** Source Url */
+            source_url?: string | null;
+        };
+        /** StructureInput */
+        StructureInput: {
+            /** Structure */
+            structure: string;
+            /**
+             * Format
+             * @default auto
+             * @enum {string}
+             */
+            format: "auto" | "smiles" | "molfile" | "cdxml";
+        };
+        /** StructurePreview */
+        StructurePreview: {
+            /** Structure Molfile */
+            structure_molfile: string;
+            /** Smiles */
+            smiles: string;
+            /** Molecular Formula */
+            molecular_formula: string;
+            /** Molecular Weight */
+            molecular_weight: string;
+            /** Exact Mass */
+            exact_mass: string;
+            /** Inchi Key */
+            inchi_key: string;
+            /** Svg */
+            svg: string;
+            /** Duplicates */
+            duplicates: components["schemas"]["DuplicateOut"][];
         };
         /** SummaryOut */
         SummaryOut: {
@@ -2266,6 +2457,101 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TagOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_api_compounds_structure_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StructureInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StructurePreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lookup_structure_api_compounds_structure_lookup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LookupInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LookupResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compound_svg_api_compounds__record_id__structure_svg_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                record_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

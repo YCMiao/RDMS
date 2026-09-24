@@ -92,12 +92,23 @@ class ExperimentPatch(VersionInput):
         return value
 
 
+class CompoundProperty(WriteModel):
+    name: str = Field(min_length=1, max_length=80)
+    value: str = Field(min_length=1, max_length=500)
+    source: str = Field(min_length=1, max_length=100)
+    source_url: str | None = Field(default=None, max_length=500)
+
+
 class CompoundFields(WriteModel):
     name: str = Field(min_length=1, max_length=300)
     smiles: str | None = Field(default=None, max_length=10000)
     molecular_formula: str | None = Field(default=None, max_length=200)
     molecular_weight: Decimal | None = Field(default=None, gt=0, max_digits=20, decimal_places=8)
     notes: str | None = None
+    structure_molfile: str | None = Field(default=None, max_length=100000)
+    cas_number: str | None = Field(default=None, max_length=32)
+    cas_source: str | None = Field(default=None, max_length=100)
+    physical_properties: list[CompoundProperty] = Field(default_factory=list, max_length=20)
     tag_ids: list[UUID] = Field(default_factory=list)
 
     @field_validator("name")
@@ -127,6 +138,10 @@ class CompoundPatch(VersionInput):
     molecular_formula: str | None = Field(default=None, max_length=200)
     molecular_weight: Decimal | None = Field(default=None, gt=0, max_digits=20, decimal_places=8)
     notes: str | None = None
+    structure_molfile: str | None = Field(default=None, max_length=100000)
+    cas_number: str | None = Field(default=None, max_length=32)
+    cas_source: str | None = Field(default=None, max_length=100)
+    physical_properties: list[CompoundProperty] | None = Field(default=None, max_length=20)
     tag_ids: list[UUID] | None = None
 
     @field_validator("name")
@@ -178,6 +193,12 @@ class CompoundOut(RecordBase):
     molecular_formula: str | None
     molecular_weight: Decimal | None
     notes: str | None
+    structure_molfile: str | None
+    inchi_key: str | None
+    exact_mass: Decimal | None
+    cas_number: str | None
+    cas_source: str | None
+    physical_properties: list[CompoundProperty]
 
 
 class RelationOut(BaseModel):

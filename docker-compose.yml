@@ -6,6 +6,7 @@ x-backend-environment: &backend-environment
   UPLOAD_ROOT: ${UPLOAD_ROOT:-/data/uploads}
   MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-104857600}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  CAS_COMMON_CHEMISTRY_API_KEY: ${CAS_COMMON_CHEMISTRY_API_KEY:-}
 
 services:
   db:

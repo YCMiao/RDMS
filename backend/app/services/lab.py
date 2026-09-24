@@ -42,6 +42,8 @@ def out(row: Sample | Reaction | ReactionComponent) -> dict[str, Any]:
             "reaction_time_hours",
             "atmosphere",
             "solvent",
+            "workup",
+            "purification",
             "notes",
         ),
         ReactionComponent: (

@@ -19,6 +19,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -82,6 +83,8 @@ class Compound(Versioned, Base):
         CheckConstraint("length(btrim(name)) > 0", name="name_nonempty"),
         CheckConstraint("molecular_weight IS NULL OR molecular_weight > 0", name="weight_positive"),
         Index("ix_compound_deleted_at", "deleted_at"),
+        Index("ix_compound_inchi_key", "inchi_key"),
+        Index("ix_compound_cas_number", "cas_number"),
     )
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     compound_code: Mapped[str] = mapped_column(String(32), unique=True)
@@ -90,6 +93,14 @@ class Compound(Versioned, Base):
     molecular_formula: Mapped[str | None] = mapped_column(String(200))
     molecular_weight: Mapped[Decimal | None] = mapped_column(NUMERIC)
     notes: Mapped[str | None] = mapped_column(Text)
+    structure_molfile: Mapped[str | None] = mapped_column(Text)
+    inchi_key: Mapped[str | None] = mapped_column(String(27))
+    exact_mass: Mapped[Decimal | None] = mapped_column(NUMERIC)
+    cas_number: Mapped[str | None] = mapped_column(String(32))
+    cas_source: Mapped[str | None] = mapped_column(String(100))
+    physical_properties: Mapped[list[dict[str, str]]] = mapped_column(
+        JSONB, nullable=False, default=list
+    )
 
 
 class ExperimentCompound(Base):
@@ -157,6 +168,8 @@ class Reaction(Versioned, Base):
     reaction_time_hours: Mapped[Decimal | None] = mapped_column(NUMERIC)
     atmosphere: Mapped[str | None] = mapped_column(String(300))
     solvent: Mapped[str | None] = mapped_column(String(300))
+    workup: Mapped[str | None] = mapped_column(Text)
+    purification: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
 
 

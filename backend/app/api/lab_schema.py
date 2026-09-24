@@ -77,6 +77,8 @@ class ReactionFields(NumericInput):
     reaction_time_hours: Decimal | None = Field(default=None, ge=0, max_digits=20, decimal_places=8)
     atmosphere: str | None = Field(default=None, max_length=300)
     solvent: str | None = Field(default=None, max_length=300)
+    workup: str | None = Field(default=None, max_length=100000)
+    purification: str | None = Field(default=None, max_length=100000)
     notes: str | None = None
 
     @field_validator("reaction_name")
@@ -94,6 +96,8 @@ class ReactionPatch(NumericInput, VersionInput):
     reaction_time_hours: Decimal | None = Field(default=None, ge=0, max_digits=20, decimal_places=8)
     atmosphere: str | None = Field(default=None, max_length=300)
     solvent: str | None = Field(default=None, max_length=300)
+    workup: str | None = Field(default=None, max_length=100000)
+    purification: str | None = Field(default=None, max_length=100000)
     notes: str | None = None
 
 
@@ -148,6 +152,8 @@ class ReactionOut(EntityBase):
     reaction_time_hours: Decimal | None
     atmosphere: str | None
     solvent: str | None
+    workup: str | None
+    purification: str | None
     notes: str | None
 
 

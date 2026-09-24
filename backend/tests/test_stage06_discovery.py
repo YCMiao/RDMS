@@ -60,7 +60,12 @@ def test_dashboard_visibility_and_deterministic_summary(client: TestClient) -> N
     reaction = create(
         client,
         f"/api/experiments/{experiment['id']}/reactions",
-        {"reaction_name": "尝试反应", "temperature_c": "25.00000000"},
+        {
+            "reaction_name": "尝试反应",
+            "temperature_c": "25.00000000",
+            "workup": "水相萃取",
+            "purification": "硅胶柱",
+        },
     )
     component = create(
         client,
@@ -85,6 +90,7 @@ def test_dashboard_visibility_and_deterministic_summary(client: TestClient) -> N
     content = first.json()
     assert content["experiment"]["objective"] == "仅记录观察"
     assert content["reactions"][0]["components"][0]["yield_percent"] == "42.00000000"
+    assert content["reactions"][0]["reaction"]["workup"] == "水相萃取"
     assert content["samples"][0]["id"] == sample["id"]
     assert content["samples"][0]["amount"] == "1.25000000"
     assert content["files"][0]["sha256"] == file["sha256"]
@@ -92,6 +98,7 @@ def test_dashboard_visibility_and_deterministic_summary(client: TestClient) -> N
     assert repeated["source_revision"] == content["source_revision"]
     md = client.get(f"/api/experiments/{experiment['id']}/summary?format=markdown")
     assert md.status_code == 200
+    assert "后处理：水相萃取" in md.text and "纯化：硅胶柱" in md.text
     assert "## 目的\n仅记录观察" in md.text and "## 结论\n未记录" in md.text
     assert "42.00000000" in md.text and "观察.txt" in md.text
     assert (

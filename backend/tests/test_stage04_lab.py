@@ -66,8 +66,19 @@ def test_samples_reactions_sources_and_versions(client: TestClient) -> None:
             "reaction_name": "反应 A",
             "temperature_c": "-10.50000000",
             "reaction_time_hours": "2.00000000",
+            "workup": "饱和氯化铵淬灭，乙酸乙酯萃取",
+            "purification": "硅胶柱，石油醚/乙酸乙酯 4:1",
         },
     )
+    assert r1["workup"] == "饱和氯化铵淬灭，乙酸乙酯萃取"
+    assert r1["purification"] == "硅胶柱，石油醚/乙酸乙酯 4:1"
+    changed_reaction = client.patch(
+        f"/api/reactions/{r1['id']}",
+        json={"expected_version": 1, "workup": "水洗后干燥", "purification": None},
+    )
+    assert changed_reaction.status_code == 200, changed_reaction.text
+    assert changed_reaction.json()["workup"] == "水洗后干燥"
+    assert changed_reaction.json()["purification"] is None
     r2 = create(client, f"/api/experiments/{exp['id']}/reactions", {"reaction_name": "反应 B"})
     assert r1["id"] != r2["id"]
     c1 = create(
@@ -116,11 +127,11 @@ def test_samples_reactions_sources_and_versions(client: TestClient) -> None:
         ).status_code
         == 200
     )
-    assert client.delete(f"/api/reactions/{r1['id']}?expected_version=1").status_code == 204
+    assert client.delete(f"/api/reactions/{r1['id']}?expected_version=2").status_code == 204
     assert client.get(f"/api/reactions/{r1['id']}").status_code == 404
     assert client.get(f"/api/reactions/{r1['id']}/components").status_code == 404
     assert (
-        client.post(f"/api/reactions/{r1['id']}/restore", json={"expected_version": 2}).status_code
+        client.post(f"/api/reactions/{r1['id']}/restore", json={"expected_version": 3}).status_code
         == 200
     )
     assert client.delete(f"/api/samples/{sample['id']}?expected_version=2").status_code == 204
