@@ -1,0 +1,110 @@
+name: rdms
+
+x-backend-environment: &backend-environment
+  DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://rdms:rdms-local-only@db:5432/rdms}
+  APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Shanghai}
+  UPLOAD_ROOT: ${UPLOAD_ROOT:-/data/uploads}
+  MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-104857600}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+services:
+  db:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rdms}
+      POSTGRES_USER: ${POSTGRES_USER:-rdms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rdms-local-only}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - rdms_postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  migration:
+    build:
+      context: ./backend
+    command: ["alembic", "upgrade", "head"]
+    environment: *backend-environment
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ${UPLOAD_HOST_ROOT:-./data/uploads}:/data/uploads
+    restart: "no"
+
+  backend:
+    build:
+      context: ./backend
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment: *backend-environment
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready', timeout=2)"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - ${UPLOAD_HOST_ROOT:-./data/uploads}:/data/uploads
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${APP_HOST_PORT:-8080}:80"
+    restart: unless-stopped
+
+  db-test:
+    image: postgres:17.6-alpine
+    profiles: ["test"]
+    environment:
+      POSTGRES_DB: rdms_test
+      POSTGRES_USER: rdms_test
+      POSTGRES_PASSWORD: rdms_test_only
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rdms_test -d rdms_test"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  backend-test:
+    build:
+      context: ./backend
+    profiles: ["test"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://rdms_test:rdms_test_only@db-test:5432/rdms_test
+      APP_TIMEZONE: Asia/Shanghai
+      UPLOAD_ROOT: /tmp/rdms-test-uploads
+      MAX_UPLOAD_BYTES: "104857600"
+      LOG_LEVEL: WARNING
+    depends_on:
+      db-test:
+        condition: service_healthy
+    tmpfs:
+      - /tmp/rdms-test-uploads
+    volumes:
+      - ./backend:/app
+    command: ["sh", "-c", "alembic upgrade head && ruff check app tests alembic && mypy app && python -m pytest -q"]
+
+  frontend-test:
+    image: node:22.20.0-alpine
+    profiles: ["test"]
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    command: ["sh", "-c", "npm ci && npm run check"]
+
+volumes:
+  rdms_postgres:
+  frontend_node_modules:
