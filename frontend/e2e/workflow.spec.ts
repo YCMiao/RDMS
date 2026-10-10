@@ -154,6 +154,9 @@ test("科研记录从创建、文件字节到删除恢复的真实闭环", async
   await expect(page.getByRole("heading", { name: title })).toBeVisible()
 
   await page.goto("/samples")
+  await expect(page.getByRole("heading", { name: "样品列表" })).toBeVisible()
+  await expect(page.getByLabel(/所属实验/)).toHaveCount(0)
+  await page.getByRole("button", { name: "新建样品" }).click()
   const sampleSection = page.locator("section.relation-section").filter({ has: page.getByRole("heading", { name: "创建样品" }) })
   await sampleSection.getByLabel(/所属实验/).selectOption(experimentId)
   await sampleSection.getByLabel(/样品类型/).fill("原液")
@@ -161,6 +164,8 @@ test("科研记录从创建、文件字节到删除恢复的真实闭环", async
   await sampleSection.getByRole("combobox", { name: "化合物", exact: true }).selectOption(compoundId)
   await sampleSection.getByRole("button", { name: "创建样品" }).click()
   await expect(page.getByText("闭环样品")).toBeVisible()
+  await expect(sampleSection).toHaveCount(0)
+  await page.screenshot({ path: "test-results/sample-list.png", fullPage: true })
 
   await page.goto(`/experiments/${experimentId}`)
   const lab = page.locator("section.relation-section").filter({ has: page.getByRole("heading", { name: "反应记录" }) })

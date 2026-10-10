@@ -1,5 +1,12 @@
 # 执行进度
 
+## 样品页按需展开新建表单（2026-10-10）
+
+- 用户批准范围仅为样品页新建入口。默认显示列表与搜索，标题旁“新建样品”展开原表单；取消时非空输入需确认，拒绝取消保留内容，确认取消清空并收起。创建成功后收起并刷新列表，失败仍保留输入。字段与 API 写入内容不变，未改动已有样品。
+- 修改前基线为 `270a7d0`（此前完整快照 `8bb718f`）。本项独立提交可撤销后重建 frontend 回滚，无 schema 或后端修改。
+- `scripts/check.sh all` 后端独立 PostgreSQL 40 项、前端 26 项及 lint/类型/构建通过；浏览器依赖下载 ECONNRESET 导致完整入口退出 1。重跑 `scripts/check.sh e2e` 退出 0，11 项通过，隔离容器与网络清理完成。日志 `/tmp/rdms-sample-toggle-check.log`、`/tmp/rdms-sample-toggle-e2e.log`。新增验证覆盖默认隐藏、成功收起、取消拒绝保留/确认清空且不写入；浏览器创建闭环通过，`frontend/test-results/sample-list.png` 已目视核对。
+- 仅构建并切换本机 frontend，退出 0，就绪返回 `{"status":"ok"}`；日志 `/tmp/rdms-sample-toggle-deploy.log`。未执行迁移或修改真实科研记录、数据库卷、上传文件。
+
 ## 首页状态卡片简化（2026-10-10）
 
 - 用户批准范围仅为首页状态卡片。修改前将全部现有代码与文档保存为 Git 快照 `8bb718fe073e111a50e7e6e195f91ec6c0ee9fd4`；真实数据库、上传目录、备份与 .env 不纳入 Git。

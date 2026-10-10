@@ -25,6 +25,8 @@ describe("sample and reaction workflows", () => {
       return respond(empty)
     })
     render(<MemoryRouter><SamplesPage /></MemoryRouter>)
+    expect(screen.queryByLabelText(/所属实验/)).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "新建样品" }))
     await waitFor(() => expect(screen.getByRole("option", { name: /测试实验/ })).toBeInTheDocument())
     await userEvent.selectOptions(screen.getByLabelText(/所属实验/), experiment.id)
     await userEvent.type(screen.getByRole("textbox", { name: /样品类型/ }), "混合物")
@@ -32,6 +34,24 @@ describe("sample and reaction workflows", () => {
     await waitFor(() => expect(sent).toHaveLength(1))
     expect(sent[0]).toMatchObject({ experiment_id: experiment.id, sample_type: "混合物", compound_id: null })
     expect(sent[0]).not.toHaveProperty("sample_code")
+    await waitFor(() => expect(screen.queryByLabelText(/所属实验/)).not.toBeInTheDocument())
+  })
+
+  it("keeps unsaved sample input when cancellation is declined and clears it when confirmed", async () => {
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async () => respond(empty))
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false)
+    render(<MemoryRouter><SamplesPage /></MemoryRouter>)
+    await userEvent.click(screen.getByRole("button", { name: "新建样品" }))
+    await userEvent.type(screen.getByLabelText("名称"), "未保存样品")
+    await userEvent.click(screen.getByRole("button", { name: "取消" }))
+    expect(confirm).toHaveBeenCalledWith("未保存的内容将丢失，确定取消？")
+    expect(screen.getByLabelText("名称")).toHaveValue("未保存样品")
+    confirm.mockReturnValue(true)
+    await userEvent.click(screen.getByRole("button", { name: "取消" }))
+    expect(screen.queryByLabelText("名称")).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "新建样品" }))
+    expect(screen.getByLabelText("名称")).toHaveValue("")
+    expect(fetch.mock.calls.some(([, init]) => init?.method === "POST")).toBe(false)
   })
 
   it("creates two reactions under one experiment", async () => {
