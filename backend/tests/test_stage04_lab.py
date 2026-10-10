@@ -105,6 +105,16 @@ def test_samples_reactions_sources_and_versions(client: TestClient) -> None:
         {"compound_id": cmp["id"], "role": "product", "yield_percent": "72.50000000"},
     )
     assert product["yield_percent"] == "72.50000000"
+    reactants = client.get(f"/api/reactions/{r2['id']}/components?reactants_only=true").json()
+    assert reactants["items"] == [] and reactants["total"] == 0
+    assert client.get(f"/api/reactions/{r2['id']}/components").json()["total"] == 1
+    assert (
+        client.get(f"/api/reactions/{r1['id']}/components?reactants_only=true&page_size=1").json()[
+            "total"
+        ]
+        == 2
+    )
+
     assert client.get(f"/api/experiments/{exp['id']}/reactions").json()["total"] == 2
     assert client.get(f"/api/reactions/{r1['id']}/components?page_size=1").json()["total"] == 2
     sources = client.get(f"/api/experiments/{exp['id']}/compounds").json()

@@ -319,3 +319,47 @@ td a:hover { text-decoration: underline; text-underline-offset: 3px; }
   .ui-empty { padding: 18px; }
   .settings-info > div { grid-template-columns: 1fr; gap: 5px; }
 }
+
+/* Reagent identity and dosing read across one laboratory ledger. */
+.dosing-heading, .reactant-editor-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 24px 0 14px; }
+.dosing-heading .reaction-section-title { margin: 0; }
+.dosing-table-scroll { border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface-raised); }
+.dosing-table { width: 100%; min-width: 900px; font-size: 13px; }
+.dosing-table th { background: var(--copper-soft); color: var(--ink-soft); white-space: nowrap; }
+.dosing-table :is(th, td) { padding: 14px 10px; }
+.dosing-table th small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; font-weight: 400; }
+.dosing-table td { vertical-align: top; font-variant-numeric: tabular-nums; }
+.dosing-table :is(th, td):nth-child(n+5):nth-child(-n+9) { text-align: right; }
+.dosing-table td:nth-child(n+3):nth-child(-n+9) { white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.dosing-table .reagent-name { min-width: 190px; max-width: 310px; overflow-wrap: anywhere; }
+.reagent-name a { font-weight: 650; color: var(--ink); }
+.reagent-name small { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; }
+.dosing-actions { display: flex; gap: 2px; }
+.dosing-actions button { padding-inline: 7px; height: 30px; font-size: 12px; }
+.dosing-table .dosing-empty { padding: 28px 18px; text-align: center; color: var(--muted); white-space: normal; }
+.reactant-editor { margin-top: 18px; border-color: var(--copper); }
+.reactant-editor-heading { margin-top: 0; }
+.reactant-editor-heading h4 { margin: 0; }
+.reactant-editor fieldset { min-width: 0; padding: 0; border: 0; }
+.reactant-modes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.cas-search > label { max-width: 380px; }
+.cas-search p, .dosing-hint { color: var(--muted); font-size: 12px; line-height: 1.65; }
+.cas-candidates { display: grid; gap: 8px; }
+.cas-candidates button { height: auto; white-space: normal; justify-content: flex-start; text-align: left; }
+.reagent-preview { margin: 18px 0; padding: 16px 18px; background: var(--copper-soft); border-radius: 6px; overflow-wrap: anywhere; }
+.reagent-preview > small { display: block; margin-top: 5px; color: var(--ink-soft); }
+.reagent-preview dl { display: flex; flex-wrap: wrap; gap: 20px 36px; margin: 12px 0 0; }
+.reagent-preview dt { font-size: 11px; color: var(--ink-soft); }
+.reagent-preview dd { margin: 4px 0 0; font-size: 13px; }
+.dosing-inputs { margin-top: 22px; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.dosing-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 16px 0 22px; }
+@media (max-width: 700px) { .dosing-inputs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dosing-heading { align-items: flex-start; } }
+
+.reaction-overview { margin-top: 8px; }
+.reaction-overview > h4 { margin: 0 0 13px; font-size: 15px; font-weight: 650; }
+.reaction-overview .reaction-molecules { align-content: start; }
+.reaction-overview .reaction-molecule img { height: 130px; }
+.reaction-overview .reaction-reagents { flex-direction: column; overflow-wrap: anywhere; }
+.reaction-overview .reaction-reagents small { font-weight: 400; }
+
+.condition-control { display: grid; gap: 0.65rem; align-content: start; }

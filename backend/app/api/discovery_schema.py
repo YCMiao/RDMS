@@ -15,7 +15,7 @@ class SearchExperimentOut(ExperimentOut):
 
 
 class SearchCompoundOut(CompoundOut):
-    matched_fields: list[Literal["name", "compound_code", "smiles"]]
+    matched_fields: list[Literal["name", "cas_number", "codename", "smiles"]]
 
 
 class SearchOut(BaseModel):

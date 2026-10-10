@@ -11,7 +11,7 @@ describe("discovery pages", () => {
   it("renders separate experiment and compound groups with matched fields", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
       query: "C%_N", experiments: { items: [], total: 0, page: 1, page_size: 10 },
-      compounds: { items: [{ id: "compound-id", compound_code: "CMP-000001", name: "目标物", matched_fields: ["smiles"] }], total: 1, page: 1, page_size: 10 },
+      compounds: { items: [{ id: "compound-id", cas_number: "92-52-4", codename: "BP", name: "目标物", matched_fields: ["smiles"] }], total: 1, page: 1, page_size: 10 },
     })))
     render(<MemoryRouter initialEntries={["/search?q=C%25_N"]}><SearchPage /></MemoryRouter>)
     await waitFor(() => expect(screen.getByText("目标物")).toBeInTheDocument())

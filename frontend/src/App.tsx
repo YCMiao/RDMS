@@ -179,10 +179,10 @@ export default function App() {
         </header>
         <Routes>
           <Route path="/" element={<Dashboard status={status} />} />
-          <Route path="/experiments" element={<RecordList kind="experiments" />} />
+          <Route path="/experiments" element={<RecordList key="experiments" kind="experiments" />} />
           <Route path="/experiments/new" element={<RecordEditor kind="experiments" />} />
           <Route path="/experiments/:id" element={<RecordEditor kind="experiments" />} />
-          <Route path="/compounds" element={<RecordList kind="compounds" />} />
+          <Route path="/compounds" element={<RecordList key="compounds" kind="compounds" />} />
           <Route path="/compounds/import" element={<CompoundImportPage />} />
           <Route path="/compounds/new" element={<RecordEditor kind="compounds" />} />
           <Route path="/compounds/:id" element={<RecordEditor kind="compounds" />} />

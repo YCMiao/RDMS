@@ -15,12 +15,12 @@ Clock = Callable[[], datetime]
 
 
 def allocate_code(session: Session, namespace: str, *, clock: Clock | None = None) -> str:
-    if namespace not in {"EXP", "CMP", "SMP"}:
+    if namespace not in {"EXP", "SMP"}:
         raise ValueError("Unknown number namespace")
     now = clock() if clock else datetime.now(UTC)
     if now.tzinfo is None:
         raise ValueError("Clock must return an aware datetime")
-    year = 0 if namespace == "CMP" else now.astimezone(ZoneInfo(get_settings().app_timezone)).year
+    year = now.astimezone(ZoneInfo(get_settings().app_timezone)).year
     session.execute(
         insert(NumberCounter)
         .values(namespace=namespace, year=year, next_value=1)
@@ -35,5 +35,5 @@ def allocate_code(session: Session, namespace: str, *, clock: Clock | None = Non
     return (
         f"{namespace}-{year:04d}-{issued:04d}"
         if namespace == "EXP"
-        else (f"SMP-{year:04d}-{issued:06d}" if namespace == "SMP" else f"CMP-{issued:06d}")
+        else f"SMP-{year:04d}-{issued:06d}"
     )

@@ -54,8 +54,11 @@ services:
     working_dir: /work
     volumes:
       - ./frontend:/work
+    tmpfs:
+      - /work/node_modules:exec
     environment:
       CI: "1"
+      NPM_CONFIG_AUDIT: "false"
       PLAYWRIGHT_BASE_URL: http://frontend
     depends_on:
       frontend:

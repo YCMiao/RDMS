@@ -2,10 +2,10 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, Self
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.api.records_schema import VersionInput, WriteModel
 
@@ -20,6 +20,7 @@ class NumericInput(WriteModel):
         "concentration",
         "temperature_c",
         "reaction_time_hours",
+        "reaction_time_minutes",
         "mmol",
         "equivalents",
         "yield_percent",
@@ -71,10 +72,41 @@ class SamplePatch(NumericInput, VersionInput):
         return value.strip()
 
 
-class ReactionFields(NumericInput):
-    reaction_name: str = Field(min_length=1, max_length=300)
+class ReactionConditions(NumericInput):
     temperature_c: Decimal | None = Field(default=None, max_digits=20, decimal_places=8)
+    temperature_description: str | None = Field(default=None, max_length=300)
     reaction_time_hours: Decimal | None = Field(default=None, ge=0, max_digits=20, decimal_places=8)
+    reaction_time_minutes: Decimal | None = Field(
+        default=None, ge=0, max_digits=20, decimal_places=8
+    )
+    reaction_time_description: str | None = Field(default=None, max_length=300)
+
+    @field_validator("temperature_description", "reaction_time_description")
+    @classmethod
+    def description(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
+
+    @model_validator(mode="after")
+    def exclusive_conditions(self) -> Self:
+        if self.temperature_c is not None and self.temperature_description is not None:
+            raise ValueError("温度请选择摄氏度或描述，不能同时填写")
+        if (
+            sum(
+                value is not None
+                for value in (
+                    self.reaction_time_hours,
+                    self.reaction_time_minutes,
+                    self.reaction_time_description,
+                )
+            )
+            > 1
+        ):
+            raise ValueError("时间请选择 h、min 或描述，不能同时填写")
+        return self
+
+
+class ReactionFields(ReactionConditions):
+    reaction_name: str = Field(min_length=1, max_length=300)
     atmosphere: str | None = Field(default=None, max_length=300)
     solvent: str | None = Field(default=None, max_length=300)
     workup: str | None = Field(default=None, max_length=100000)
@@ -90,10 +122,8 @@ class ReactionFields(NumericInput):
         return value
 
 
-class ReactionPatch(NumericInput, VersionInput):
+class ReactionPatch(ReactionConditions, VersionInput):
     reaction_name: str | None = Field(default=None, min_length=1, max_length=300)
-    temperature_c: Decimal | None = Field(default=None, max_digits=20, decimal_places=8)
-    reaction_time_hours: Decimal | None = Field(default=None, ge=0, max_digits=20, decimal_places=8)
     atmosphere: str | None = Field(default=None, max_length=300)
     solvent: str | None = Field(default=None, max_length=300)
     workup: str | None = Field(default=None, max_length=100000)
@@ -147,9 +177,13 @@ class SampleOut(EntityBase):
 
 class ReactionOut(EntityBase):
     experiment_id: UUID
+    sort_order: int
     reaction_name: str
     temperature_c: Decimal | None
+    temperature_description: str | None
     reaction_time_hours: Decimal | None
+    reaction_time_minutes: Decimal | None
+    reaction_time_description: str | None
     atmosphere: str | None
     solvent: str | None
     workup: str | None

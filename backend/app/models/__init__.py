@@ -87,8 +87,9 @@ class Compound(Versioned, Base):
         Index("ix_compound_cas_number", "cas_number"),
     )
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    compound_code: Mapped[str] = mapped_column(String(32), unique=True)
-    name: Mapped[str] = mapped_column(String(300))
+    legacy_compound_code: Mapped[str | None] = mapped_column(String(32), unique=True)
+    name: Mapped[str | None] = mapped_column(String(300))
+    codename: Mapped[str | None] = mapped_column(String(300))
     smiles: Mapped[str | None] = mapped_column(String(10000))
     molecular_formula: Mapped[str | None] = mapped_column(String(200))
     molecular_weight: Mapped[Decimal | None] = mapped_column(NUMERIC)
@@ -153,9 +154,22 @@ class Reaction(Versioned, Base):
     __tablename__ = "reaction"
     __table_args__ = (
         CheckConstraint("version > 0", name="version_positive"),
+        CheckConstraint("sort_order >= 0", name="reaction_order_nonnegative"),
         CheckConstraint("length(btrim(reaction_name)) > 0", name="name_nonempty"),
         CheckConstraint(
             "reaction_time_hours IS NULL OR reaction_time_hours >= 0", name="time_nonnegative"
+        ),
+        CheckConstraint(
+            "temperature_c IS NULL OR temperature_description IS NULL", name="temperature_exclusive"
+        ),
+        CheckConstraint(
+            "num_nonnulls(reaction_time_hours, reaction_time_minutes, "
+            "reaction_time_description) <= 1",
+            name="time_exclusive",
+        ),
+        CheckConstraint(
+            "reaction_time_minutes IS NULL OR reaction_time_minutes >= 0",
+            name="minutes_nonnegative",
         ),
         Index("ix_reaction_experiment_deleted", "experiment_id", "deleted_at"),
     )
@@ -164,8 +178,12 @@ class Reaction(Versioned, Base):
         PGUUID(as_uuid=True), ForeignKey("experiment.id", ondelete="RESTRICT")
     )
     reaction_name: Mapped[str] = mapped_column(String(300))
+    sort_order: Mapped[int] = mapped_column(Integer, server_default="0")
     temperature_c: Mapped[Decimal | None] = mapped_column(NUMERIC)
+    temperature_description: Mapped[str | None] = mapped_column(String(300))
     reaction_time_hours: Mapped[Decimal | None] = mapped_column(NUMERIC)
+    reaction_time_minutes: Mapped[Decimal | None] = mapped_column(NUMERIC)
+    reaction_time_description: Mapped[str | None] = mapped_column(String(300))
     atmosphere: Mapped[str | None] = mapped_column(String(300))
     solvent: Mapped[str | None] = mapped_column(String(300))
     workup: Mapped[str | None] = mapped_column(Text)

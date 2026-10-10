@@ -46,7 +46,7 @@ def make_experiment(session: Session, *, year: int = 2035) -> Experiment:
 
 
 def make_compound(session: Session) -> Compound:
-    compound = Compound(compound_code=allocate_code(session, "CMP"), name="化合物")
+    compound = Compound(codename="化合物")
     session.add(compound)
     session.flush()
     return compound
@@ -73,7 +73,7 @@ def test_schema_contains_all_tables_and_constraints(db_engine) -> None:  # type:
             == [
                 {
                     "experiment": "experiment_code",
-                    "compound": "compound_code",
+                    "compound": "legacy_compound_code",
                     "sample": "sample_code",
                 }[table]
             ]
@@ -155,17 +155,21 @@ def test_database_rejects_invalid_relationships_and_values(db_engine) -> None:  
 def test_fifty_independent_transactions_and_committed_number_not_reused(db_engine) -> None:  # type: ignore[no-untyped-def]
     def create_one(index: int) -> tuple[str, str]:
         with Session(db_engine) as session:
-            compound = Compound(compound_code=allocate_code(session, "CMP"), name=f"并发{index}")
+            compound = Experiment(
+                experiment_code=allocate_code(session, "EXP"),
+                title=f"并发{index}",
+                date=date(2035, 1, 1),
+            )
             session.add(compound)
             session.commit()
-            return compound.compound_code, str(compound.id)
+            return compound.experiment_code, str(compound.id)
 
     with ThreadPoolExecutor(max_workers=50) as pool:
         created = list(pool.map(create_one, range(50)))
     codes = {code for code, _ in created}
     assert len(codes) == 50
     with Session(db_engine) as session:
-        assert update_if_version(session, Compound, UUID(created[0][1]), 1, {}, deleted=True)
+        assert update_if_version(session, Experiment, UUID(created[0][1]), 1, {}, deleted=True)
         session.commit()
     later_code, _ = create_one(51)
     assert later_code not in codes
@@ -178,11 +182,10 @@ def test_calendar_year_timezone_width_and_rollback(db_engine) -> None:  # type: 
     with Session(db_engine) as session:
         first = allocate_code(session, "EXP", clock=lambda: before)
         next_year = allocate_code(session, "EXP", clock=lambda: after)
-        cmp_first = allocate_code(session, "CMP", clock=lambda: before)
-        cmp_second = allocate_code(session, "CMP", clock=lambda: after)
+        with pytest.raises(ValueError):
+            allocate_code(session, "CMP", clock=lambda: before)
         assert first.startswith("EXP-2041-")
         assert next_year.startswith("EXP-2042-")
-        assert int(cmp_second.split("-")[-1]) == int(cmp_first.split("-")[-1]) + 1
         experiment = Experiment(experiment_code=first, title="跨年", date=date(2041, 12, 31))
         session.add(experiment)
         session.commit()

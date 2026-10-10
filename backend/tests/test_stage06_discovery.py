@@ -70,7 +70,12 @@ def test_dashboard_visibility_and_deterministic_summary(client: TestClient) -> N
     component = create(
         client,
         f"/api/reactions/{reaction['id']}/components",
-        {"compound_id": compound["id"], "role": "product", "yield_percent": "42.00000000"},
+        {
+            "compound_id": compound["id"],
+            "role": "product",
+            "yield_percent": "42.34500000",
+            "equivalents": "1.23500000",
+        },
     )
     uploaded = client.post(
         f"/api/experiments/{experiment['id']}/files",
@@ -89,7 +94,7 @@ def test_dashboard_visibility_and_deterministic_summary(client: TestClient) -> N
     assert first.status_code == 200, first.text
     content = first.json()
     assert content["experiment"]["objective"] == "仅记录观察"
-    assert content["reactions"][0]["components"][0]["yield_percent"] == "42.00000000"
+    assert content["reactions"][0]["components"][0]["yield_percent"] == "42.34500000"
     assert content["reactions"][0]["reaction"]["workup"] == "水相萃取"
     assert content["samples"][0]["id"] == sample["id"]
     assert content["samples"][0]["amount"] == "1.25000000"
@@ -100,7 +105,9 @@ def test_dashboard_visibility_and_deterministic_summary(client: TestClient) -> N
     assert md.status_code == 200
     assert "后处理：水相萃取" in md.text and "纯化：硅胶柱" in md.text
     assert "## 目的\n仅记录观察" in md.text and "## 结论\n未记录" in md.text
-    assert "42.00000000" in md.text and "观察.txt" in md.text
+    assert "温度：25 °C" in md.text and "数量 1.25 mL" in md.text
+    assert "当量 1.24 · 收率 42.35%" in md.text and "观察.txt" in md.text
+    assert "00000000" not in md.text
     assert (
         client.delete(
             f"/api/reactions/{reaction['id']}/components/{component['id']}?expected_version=1"

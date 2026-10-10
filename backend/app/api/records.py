@@ -9,6 +9,7 @@ from app.api.records_schema import (
     CompoundFields,
     CompoundOut,
     CompoundPatch,
+    ExperimentCopy,
     ExperimentFields,
     ExperimentOut,
     ExperimentPatch,
@@ -42,7 +43,7 @@ def experiments(
     tag_id: UUID | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
-    sort: Literal["date_desc", "date_asc"] = "date_desc",
+    sort: Literal["date_desc", "date_asc", "created_desc", "name_asc"] = "date_desc",
 ) -> dict[str, object]:
     if status_filter and status_filter not in {"draft", "in_progress", "completed", "cancelled"}:
         raise records.RecordError(422, "VALIDATION_ERROR", "无效的实验状态")
@@ -53,7 +54,7 @@ def experiments(
         tag_id=tag_id,
         page=page,
         page_size=page_size,
-        sort=sort,
+        sort=sort if sort in {"date_desc", "date_asc"} else "date_desc",
         status=status_filter,
         date_from=date_from,
         date_to=date_to,
@@ -63,6 +64,15 @@ def experiments(
 @router.post("/experiments", response_model=ExperimentOut, status_code=201)
 def create_experiment(payload: ExperimentFields, db: Session = DB) -> dict[str, object]:
     return records.create_record(db, Experiment, payload)
+
+
+@router.post("/experiments/{record_id}/copy", response_model=ExperimentOut, status_code=201)
+def copy_experiment(
+    record_id: UUID, payload: ExperimentCopy, db: Session = DB
+) -> dict[str, object]:
+    from app.services.experiment_copy import copy_experiment as copy
+
+    return copy(db, record_id, payload)
 
 
 @router.get("/experiments/{record_id}", response_model=ExperimentOut)
@@ -129,10 +139,16 @@ def compounds(
     tag_id: UUID | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
-    sort: Literal["created_desc", "name_asc"] = "created_desc",
+    sort: Literal["created_desc", "name_asc", "date_desc", "date_asc"] = "created_desc",
 ) -> dict[str, object]:
     return records.list_records(
-        db, Compound, q=q, tag_id=tag_id, page=page, page_size=page_size, sort=sort
+        db,
+        Compound,
+        q=q,
+        tag_id=tag_id,
+        page=page,
+        page_size=page_size,
+        sort=sort if sort in {"created_desc", "name_asc"} else "created_desc",
     )
 
 

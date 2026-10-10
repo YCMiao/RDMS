@@ -2,11 +2,13 @@
 
 from types import SimpleNamespace
 from unittest.mock import patch
+from urllib.error import HTTPError
 
+import pytest
 from fastapi.testclient import TestClient
 from rdkit import Chem
 
-from app.services.compound_lookup import lookup
+from app.services.compound_lookup import LookupAuthError, _read_json, lookup
 
 
 def test_structure_preview_create_duplicate_and_replace(client: TestClient) -> None:
@@ -134,3 +136,116 @@ def test_cas_lookup_verifies_identity_and_preserves_property_source() -> None:
     assert result["candidates"][0]["source"] == "CAS Common Chemistry"
     assert result["properties"][0]["source_url"].startswith("https://commonchemistry.cas.org/")
     assert result["pubchem_cid"] == 702
+
+
+def test_cas_unauthorized_response_identifies_credential_problem() -> None:
+    with (
+        patch(
+            "app.services.compound_lookup.urlopen",
+            side_effect=HTTPError(
+                "https://commonchemistry.cas.org/api/search", 401, "Unauthorized", None, None
+            ),
+        ),
+        pytest.raises(LookupAuthError),
+    ):
+        _read_json("https://commonchemistry.cas.org/api/search?q=ethanol", api_key="test-key")
+
+    def fake_read(url: str, *, api_key: str | None = None) -> dict[str, object]:
+        if "commonchemistry.cas.org" in url:
+            raise LookupAuthError("rejected")
+        if "/cids/JSON" in url:
+            return {"IdentifierList": {"CID": [702]}}
+        if "/synonyms/JSON" in url:
+            return {"InformationList": {"Information": [{"Synonym": []}]}}
+        return {"Record": {}}
+
+    with (
+        patch(
+            "app.services.compound_lookup.get_settings",
+            return_value=SimpleNamespace(cas_common_chemistry_api_key="test-key"),
+        ),
+        patch("app.services.compound_lookup._read_json", side_effect=fake_read),
+    ):
+        result = lookup("LFQSCWFLJHTTHZ-UHFFFAOYSA-N")
+    assert result["pubchem_cid"] == 702
+    assert result["warnings"] == [
+        "CAS Common Chemistry 拒绝当前密钥；请向 CAS 核对有效期和接口权限"
+    ]
+
+
+def test_cas_reagent_lookup_local_exact_readonly_and_systematic_name(client: TestClient) -> None:
+    created = client.post(
+        "/api/compounds",
+        json={
+            "codename": "乙醇",
+            "name": "ethanol",
+            "cas_number": "64-17-5",
+            "molecular_formula": "C2H6O",
+            "molecular_weight": "46.06844",
+        },
+    ).json()
+    other = client.post("/api/compounds", json={"name": "名称含 64-17-5，不是精确 CAS"}).json()
+    with patch("app.api.compound_chemistry.lookup_cas") as remote:
+        response = client.post("/api/compounds/cas/lookup", json={"cas_number": " 64-17-5 "})
+        assert response.status_code == 200, response.text
+        assert [row["id"] for row in response.json()["local_matches"]] == [created["id"]]
+        assert response.json()["local_matches"][0]["name"] == "ethanol"
+        assert response.json()["candidates"] == []
+        remote.assert_not_called()
+        invalid = client.post("/api/compounds/cas/lookup", json={"cas_number": "64-17-6"})
+        assert invalid.status_code == 422
+        remote.assert_not_called()
+    assert client.get("/api/compounds?q=ethanol").json()["items"][0]["id"] == created["id"]
+    before = client.get("/api/compounds").json()["total"]
+    assert client.delete(f"/api/compounds/{created['id']}?expected_version=1").status_code == 204
+    with patch(
+        "app.api.compound_chemistry.lookup_cas",
+        return_value={
+            "candidates": [],
+            "warnings": ["未找到"],
+        },
+    ) as remote:
+        response = client.post("/api/compounds/cas/lookup", json={"cas_number": "64-17-5"})
+        assert response.json()["local_matches"] == []
+        remote.assert_called_once_with("64-17-5")
+    assert client.get("/api/compounds").json()["total"] == before - 1
+    assert client.get(f"/api/compounds/{other['id']}").json()["version"] == 1
+
+
+def test_cas_reagent_lookup_checks_synonyms_and_uses_iupac() -> None:
+    from app.services.compound_lookup import lookup_cas
+
+    def fake_read(url: str) -> dict[str, object]:
+        if "/property/" in url:
+            return {
+                "PropertyTable": {
+                    "Properties": [
+                        {
+                            "CID": 702,
+                            "IUPACName": "ethanol",
+                            "MolecularFormula": "C2H6O",
+                            "MolecularWeight": "46.07",
+                        },
+                        {
+                            "CID": 887,
+                            "IUPACName": "methanol",
+                            "MolecularFormula": "CH4O",
+                            "MolecularWeight": "32.04",
+                        },
+                    ]
+                }
+            }
+        if "/702/" in url:
+            return {"InformationList": {"Information": [{"CID": 702, "Synonym": ["64-17-5"]}]}}
+        return {"InformationList": {"Information": [{"CID": 887, "Synonym": ["67-56-1"]}]}}
+
+    with patch("app.services.compound_lookup._read_json", side_effect=fake_read):
+        result = lookup_cas("64-17-5")
+    assert len(result["candidates"]) == 1
+    assert result["candidates"][0]["name"] == "ethanol"
+    assert result["candidates"][0]["molecular_weight"] == "46.07"
+    assert result["candidates"][0]["source_url"].endswith("/702")
+    with patch("app.services.compound_lookup._read_json", side_effect=LookupError("offline")):
+        assert lookup_cas("64-17-5")["warnings"]
+    with patch("app.services.compound_lookup._read_json", return_value={}):
+        assert lookup_cas("64-17-5")["candidates"] == []

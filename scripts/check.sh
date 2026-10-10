@@ -29,9 +29,18 @@ check_frontend() {
   "$DOCKER" compose --profile test run --rm frontend-test
 }
 
-check_e2e() {
+cleanup_e2e_test() {
   "$DOCKER" compose -f docker-compose.e2e.yml down --remove-orphans
+}
+
+check_e2e() {
+  trap cleanup_e2e_test EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  cleanup_e2e_test
   "$DOCKER" compose -f docker-compose.e2e.yml up --build --abort-on-container-exit --exit-code-from playwright playwright
+  cleanup_e2e_test
+  trap - EXIT INT TERM
 }
 
 case "${1:-}" in

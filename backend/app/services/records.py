@@ -91,8 +91,8 @@ def output(session: Session, record: Experiment | Compound) -> dict[str, Any]:
         )
         if isinstance(record, Experiment)
         else (
-            "compound_code",
             "name",
+            "codename",
             "smiles",
             "molecular_formula",
             "molecular_weight",
@@ -164,6 +164,8 @@ def create_record(
     payload: ExperimentFields | CompoundFields,
 ) -> dict[str, Any]:
     values = payload.model_dump(exclude={"tag_ids"})
+    if model is Compound and not any(values.get(key) for key in ("name", "codename", "cas_number")):
+        raise RecordError(422, "VALIDATION_ERROR", "请填写系统名称、代号或 CAS 号")
     if model is Compound and values.get("structure_molfile"):
         from app.services.chemistry import parse_structure
 
@@ -178,11 +180,7 @@ def create_record(
         )
     record = model(
         **values,
-        **(
-            {"experiment_code": allocate_code(session, "EXP")}
-            if model is Experiment
-            else {"compound_code": allocate_code(session, "CMP")}
-        ),
+        **({"experiment_code": allocate_code(session, "EXP")} if model is Experiment else {}),
     )
     session.add(record)
     session.flush()
@@ -222,11 +220,13 @@ def update_record(
                 inchi_key=parsed.inchi_key,
             )
             if isinstance(record, Compound) and record.inchi_key != parsed.inchi_key:
+                values.setdefault("name", None)
                 values.setdefault("cas_number", None)
                 values.setdefault("cas_source", None)
                 values.setdefault("physical_properties", [])
         else:
             values.update(
+                name=None,
                 structure_molfile=None,
                 inchi_key=None,
                 exact_mass=None,

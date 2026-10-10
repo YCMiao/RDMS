@@ -4,16 +4,17 @@ from decimal import Decimal
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.records_schema import CompoundOut
 from app.db.session import get_db
 from app.models import Compound
 from app.repositories.records import active_record
 from app.services.chemistry import parse_structure
-from app.services.compound_lookup import lookup
-from app.services.records import missing
+from app.services.compound_lookup import _valid_cas, lookup, lookup_cas
+from app.services.records import missing, output
 
 router = APIRouter(tags=["compound chemistry"])
 DB = Depends(get_db)
@@ -26,8 +27,9 @@ class StructureInput(BaseModel):
 
 class DuplicateOut(BaseModel):
     id: str
-    compound_code: str
-    name: str
+    cas_number: str | None
+    name: str | None
+    codename: str | None
 
 
 class StructurePreview(BaseModel):
@@ -84,7 +86,12 @@ def preview(payload: StructureInput, db: Session = DB) -> dict[str, object]:
         "inchi_key": result.inchi_key,
         "svg": result.svg,
         "duplicates": [
-            {"id": str(item.id), "compound_code": item.compound_code, "name": item.name}
+            {
+                "id": str(item.id),
+                "cas_number": item.cas_number,
+                "name": item.name,
+                "codename": item.codename,
+            }
             for item in duplicates
         ],
     }
@@ -110,3 +117,46 @@ def compound_svg(record_id: str, db: Session = DB) -> Response:
     return Response(
         result.svg, media_type="image/svg+xml", headers={"Cache-Control": "private, max-age=60"}
     )
+
+
+class CasLookupInput(BaseModel):
+    cas_number: str = Field(max_length=32)
+
+    @field_validator("cas_number")
+    @classmethod
+    def valid_cas(cls, value: str) -> str:
+        value = value.strip()
+        if not _valid_cas(value):
+            raise ValueError("CAS 号格式或校验位无效")
+        return value
+
+
+class ReagentCandidate(BaseModel):
+    name: str
+    cas_number: str
+    molecular_formula: str
+    molecular_weight: str
+    source: str
+    source_url: str
+
+
+class CasLookupResult(BaseModel):
+    local_matches: list[CompoundOut]
+    candidates: list[ReagentCandidate]
+    warnings: list[str]
+
+
+@router.post("/compounds/cas/lookup", response_model=CasLookupResult)
+def lookup_reagent(payload: CasLookupInput, db: Session = DB) -> dict[str, object]:
+    matches = db.scalars(
+        select(Compound)
+        .where(Compound.cas_number == payload.cas_number, Compound.deleted_at.is_(None))
+        .order_by(Compound.created_at, Compound.id)
+    ).all()
+    if matches:
+        return {
+            "local_matches": [output(db, row) for row in matches],
+            "candidates": [],
+            "warnings": [],
+        }
+    return {"local_matches": [], **lookup_cas(payload.cas_number)}

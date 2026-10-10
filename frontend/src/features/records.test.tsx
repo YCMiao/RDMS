@@ -52,8 +52,8 @@ describe("experiment editor", () => {
     })
     const sent: unknown[] = []
     const created = {
-      id: "6035a847-5220-484b-84a0-df2b148f55aa", compound_code: "CMP-000001",
-      name: "联苯", smiles: null, molecular_formula: null, molecular_weight: null,
+      id: "6035a847-5220-484b-84a0-df2b148f55aa", codename: "BP",
+      cas_number: "92-52-4", name: "biphenyl", smiles: null, molecular_formula: null, molecular_weight: null,
       notes: null, tags: [], version: 1,
       created_at: "2026-09-23T00:00:00Z", updated_at: "2026-09-23T00:00:00Z",
     }
@@ -69,16 +69,18 @@ describe("experiment editor", () => {
     render(<StrictMode><MemoryRouter initialEntries={["/compounds"]}><Routes><Route path="/compounds" element={<RecordList kind="compounds" />} /><Route path="/compounds/:id" element={<RecordEditor kind="compounds" />} /></Routes></MemoryRouter></StrictMode>)
     await userEvent.click(screen.getByRole("button", { name: "新建化合物" }))
     expect(screen.getByRole("dialog", { name: "新建化合物" })).toBeInTheDocument()
-    await userEvent.type(screen.getByRole("textbox", { name: /名称/ }), "联苯")
-    await userEvent.click(screen.getByRole("button", { name: "创建并分配编号" }))
-    await waitFor(() => expect(screen.getByText(/CMP-000001/)).toBeInTheDocument())
-    expect(sent[0]).toMatchObject({ name: "联苯", tag_ids: [] })
+    await userEvent.type(screen.getByRole("textbox", { name: /名称/ }), "biphenyl")
+    await userEvent.type(screen.getByLabelText("CAS 编号"), "92-52-4")
+    await userEvent.type(screen.getByLabelText("代号"), "BP")
+    await userEvent.click(screen.getByRole("button", { name: "创建化合物" }))
+    await waitFor(() => expect(screen.getByText(/92-52-4/)).toBeInTheDocument())
+    expect(sent[0]).toMatchObject({ name: "biphenyl", codename: "BP", cas_number: "92-52-4", tag_ids: [] })
     expect(sent[0]).not.toHaveProperty("compound_code")
   })
 
   it("shows two decimals without changing the stored weight on an unrelated edit", async () => {
     const compound = {
-      id: "6035a847-5220-484b-84a0-df2b148f55aa", compound_code: "CMP-000001",
+      id: "6035a847-5220-484b-84a0-df2b148f55aa", codename: "BP",
       name: "测试化合物", smiles: null, molecular_formula: "C10H10", molecular_weight: "154.21000000",
       structure_molfile: null, exact_mass: null, inchi_key: null, cas_number: null, cas_source: null,
       physical_properties: [], notes: null, tags: [], version: 1,

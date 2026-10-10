@@ -13,7 +13,7 @@ type StructurePreview = {
   exact_mass: string
   inchi_key: string
   svg: string
-  duplicates: { id: string; compound_code: string; name: string }[]
+  duplicates: { id: string; cas_number: string | null; name: string | null; codename: string | null }[]
 }
 
 type LookupResult = {
@@ -32,7 +32,7 @@ function errorText(reason: unknown): string {
 export function CompoundStructurePanel({ item }: { item: StructuredCompound }) {
   return <section className="relation-section compound-summary">
     <div className="compound-summary-heading"><div><span className="eyebrow">STRUCTURE &amp; PROPERTIES</span><h2>结构与理化资料</h2></div><Link className="text-link" to={`/compounds/import?replace=${item.id}`}>{item.structure_molfile ? "替换结构" : "导入结构"}</Link></div>
-    {item.structure_molfile ? <div className="compound-summary-grid"><div className="structure-figure"><img src={`/api/compounds/${item.id}/structure.svg`} alt={`${item.name} 的二维化学结构`} /></div><dl className="compound-facts"><div><dt>CAS 号</dt><dd>{item.cas_number || "未确认"}{item.cas_source && <small>{item.cas_source}</small>}</dd></div><div><dt>分子式</dt><dd>{item.molecular_formula || "—"}</dd></div><div><dt>分子量</dt><dd>{item.molecular_weight ? `${formatMass(item.molecular_weight, 2)} g/mol` : "—"}</dd></div><div><dt>精确质量</dt><dd>{formatMass(item.exact_mass, 4) || "—"}</dd></div><div><dt>InChIKey</dt><dd className="mono-wrap">{item.inchi_key || "—"}</dd></div></dl></div> : <p className="helper">此记录没有结构文件。可导入 ChemDraw 的 MOL、SMILES 或 CDXML，再由本机计算结构资料。</p>}
+    {item.structure_molfile ? <div className="compound-summary-grid"><div className="structure-figure"><img src={`/api/compounds/${item.id}/structure.svg`} alt={`${item.name || item.codename || "未命名化合物"} 的二维化学结构`} /></div><dl className="compound-facts"><div><dt>CAS 号</dt><dd>{item.cas_number || "未确认"}{item.cas_source && <small>{item.cas_source}</small>}</dd></div><div><dt>分子式</dt><dd>{item.molecular_formula || "—"}</dd></div><div><dt>分子量</dt><dd>{item.molecular_weight ? `${formatMass(item.molecular_weight, 2)} g/mol` : "—"}</dd></div><div><dt>精确质量</dt><dd>{formatMass(item.exact_mass, 4) || "—"}</dd></div><div><dt>InChIKey</dt><dd className="mono-wrap">{item.inchi_key || "—"}</dd></div></dl></div> : <p className="helper">此记录没有结构文件。可导入 ChemDraw 的 MOL、SMILES 或 CDXML，再由本机计算结构资料。</p>}
     {item.physical_properties?.length ? <div className="compound-properties"><h3>有来源的性质</h3>{item.physical_properties.map((property, index) => <div key={`${property.name}-${index}`}><strong>{property.name}</strong><span>{property.value}</span>{property.source_url ? <a href={property.source_url} target="_blank" rel="noopener noreferrer">{property.source}</a> : <small>{property.source}</small>}</div>)}</div> : null}
   </section>
 }
@@ -48,12 +48,13 @@ export function CompoundImportPage() {
   const [selectedCas, setSelectedCas] = useState("")
   const [selectedProperties, setSelectedProperties] = useState<number[]>([])
   const [name, setName] = useState("")
+  const [codename, setCodename] = useState("")
   const [notes, setNotes] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   useEffect(() => {
     if (!replaceId) return
-    void request<StructuredCompound>(`/compounds/${replaceId}`).then(item => { setExisting(item); setName(item.name); setNotes(item.notes || "") }).catch(reason => setError(errorText(reason)))
+    void request<StructuredCompound>(`/compounds/${replaceId}`).then(item => { setExisting(item); setName(item.name || ""); setCodename(item.codename || ""); setNotes(item.notes || "") }).catch(reason => setError(errorText(reason)))
   }, [replaceId])
 
   async function parse(value: string) {
@@ -62,6 +63,7 @@ export function CompoundImportPage() {
     try {
       const result = await request<StructurePreview>("/compounds/structure/preview", { method: "POST", body: JSON.stringify({ structure: value, format: "auto" }) })
       setPreview(result)
+      if (existing && result.inchi_key !== existing.inchi_key) setName("")
     } catch (reason) { setError(errorText(reason)) }
     finally { setBusy(false) }
   }
@@ -100,11 +102,12 @@ export function CompoundImportPage() {
 
   async function save(event: FormEvent) {
     event.preventDefault()
-    if (!preview || !name.trim() || (replaceId && !existing)) return
+    if (!preview || !(name.trim() || codename.trim()) || (replaceId && !existing)) return
     setBusy(true); setError("")
     const candidate = lookup?.candidates.find(item => item.cas_number === selectedCas)
     const payload = {
-      name: name.trim(),
+      name: name.trim() || null,
+      codename: codename.trim() || null,
       notes: notes.trim() || null,
       structure_molfile: preview.structure_molfile,
       cas_number: candidate?.cas_number || null,
@@ -127,12 +130,12 @@ export function CompoundImportPage() {
       {error && <p className="form-notice" role="alert">{error}</p>}
     </section>
     <section className="record-form"><span className="eyebrow">02 / 本机计算</span><h2>确认结构</h2>
-      {preview ? <><div className="structure-figure"><img src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(preview.svg)}`} alt="导入结构的二维预览" /></div><dl className="compound-facts"><div><dt>分子式</dt><dd>{preview.molecular_formula}</dd></div><div><dt>分子量</dt><dd>{formatMass(preview.molecular_weight, 2)} g/mol</dd></div><div><dt>精确质量</dt><dd>{formatMass(preview.exact_mass, 4)}</dd></div><div><dt>InChIKey</dt><dd className="mono-wrap">{preview.inchi_key}</dd></div></dl><p className="helper">以上由本机计算；此时结构尚未发送至公开资料服务。</p>{preview.duplicates.length > 0 && <div className="form-notice"><strong>发现已有相同结构</strong>{preview.duplicates.map(item => <p key={item.id}><Link to={`/compounds/${item.id}`}>{item.compound_code} · {item.name}</Link></p>)}</div>}</> : <p className="helper">粘贴后将在这里显示结构图和计算结果。</p>}
+      {preview ? <><div className="structure-figure"><img src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(preview.svg)}`} alt="导入结构的二维预览" /></div><dl className="compound-facts"><div><dt>分子式</dt><dd>{preview.molecular_formula}</dd></div><div><dt>分子量</dt><dd>{formatMass(preview.molecular_weight, 2)} g/mol</dd></div><div><dt>精确质量</dt><dd>{formatMass(preview.exact_mass, 4)}</dd></div><div><dt>InChIKey</dt><dd className="mono-wrap">{preview.inchi_key}</dd></div></dl><p className="helper">以上由本机计算；此时结构尚未发送至公开资料服务。</p>{preview.duplicates.length > 0 && <div className="form-notice"><strong>发现已有相同结构</strong>{preview.duplicates.map(item => <p key={item.id}><Link to={`/compounds/${item.id}`}>{item.cas_number || "CAS 待确认"} · {item.name || item.codename}</Link></p>)}</div>}</> : <p className="helper">粘贴后将在这里显示结构图和计算结果。</p>}
     </section></div>
     {preview && <section className="record-form compound-reference"><span className="eyebrow">03 / 可选查询</span><h2>公开资料</h2><p className="helper">点击后会把结构标识发送给 CAS Common Chemistry（已配置密钥时）和 PubChem。对未发表结构可跳过，直接保存本机计算结果。</p><Button type="button" variant="outline" disabled={busy} onClick={() => void findReferences()}>{busy ? "查询中…" : "查询 CAS 与理化性质"}</Button>
-      {lookup && <><div className="lookup-warnings">{lookup.warnings.map(text => <p key={text}>{text}</p>)}</div><h3>CAS 候选</h3>{lookup.candidates.length ? <div className="lookup-choices">{lookup.candidates.map(item => <label key={`${item.source}-${item.cas_number}`}><input type="radio" name="cas-choice" checked={selectedCas === item.cas_number} onChange={() => { setSelectedCas(item.cas_number); if (!name.trim()) setName(item.name) }} /><span><strong>{item.cas_number}</strong> · {item.name}<small>{item.source} · <a href={item.source_url} target="_blank" rel="noopener noreferrer">查看来源</a></small></span></label>)}</div> : <p className="helper">没有找到 CAS 候选；可保持未确认状态。</p>}
+      {lookup && <><div className="lookup-warnings">{lookup.warnings.map(text => <p key={text}>{text}</p>)}</div><h3>CAS 候选</h3>{lookup.candidates.length ? <div className="lookup-choices">{lookup.candidates.map(item => <label key={`${item.source}-${item.cas_number}`}><input type="radio" name="cas-choice" checked={selectedCas === item.cas_number} onChange={() => { setSelectedCas(item.cas_number) }} /><span><strong>{item.cas_number}</strong> · {item.name}<small>{item.source} · <a href={item.source_url} target="_blank" rel="noopener noreferrer">查看来源</a></small></span></label>)}</div> : <p className="helper">没有找到 CAS 候选；可保持未确认状态。</p>}
       <h3>可保存的实验性质</h3>{lookup.properties.length ? <div className="lookup-choices">{lookup.properties.map((item, index) => <label key={`${item.name}-${index}`}><input type="checkbox" checked={selectedProperties.includes(index)} onChange={event => setSelectedProperties(current => event.target.checked ? [...current, index] : current.filter(value => value !== index))} /><span><strong>{item.name}</strong> · {item.value}<small>{item.source}</small></span></label>)}</div> : <p className="helper">此结构没有查到可用的密度、熔点或沸点资料。</p>}</>}
     </section>}
-    {preview && <form className="record-form compound-save" onSubmit={event => void save(event)}><span className="eyebrow">04 / 保存记录</span><h2>化合物身份</h2><div className="form-grid"><label>名称 <span>*</span><input required maxLength={300} value={name} onChange={event => setName(event.target.value)} placeholder="常用名或自定义中间体名称" /></label><label className="wide-field">备注<textarea rows={3} value={notes} onChange={event => setNotes(event.target.value)} /></label></div><div className="form-actions"><Button disabled={busy || !name.trim() || Boolean(replaceId && !existing)}>{busy ? "保存中…" : replaceId ? "保存新结构" : "创建化合物"}</Button></div></form>}
+    {preview && <form className="record-form compound-save" onSubmit={event => void save(event)}><span className="eyebrow">04 / 保存记录</span><h2>化合物身份</h2><div className="form-grid"><label>名称（IUPAC）<input maxLength={300} value={name} onChange={event => setName(event.target.value)} placeholder="系统名称" /></label><label>代号<input maxLength={300} value={codename} onChange={event => setCodename(event.target.value)} placeholder="实验简称或中间体代号" /></label><label className="wide-field">备注<textarea rows={3} value={notes} onChange={event => setNotes(event.target.value)} /></label></div><div className="form-actions"><Button disabled={busy || !(name.trim() || codename.trim()) || Boolean(replaceId && !existing)}>{busy ? "保存中…" : replaceId ? "保存新结构" : "创建化合物"}</Button></div></form>}
   </main>
 }

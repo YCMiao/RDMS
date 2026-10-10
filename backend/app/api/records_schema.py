@@ -66,6 +66,16 @@ class ExperimentFields(WriteModel):
         return value.strip() if value is not None else None
 
 
+class ExperimentCopy(VersionInput):
+    title: str = Field(min_length=1, max_length=300)
+    date: Date
+
+    @field_validator("title")
+    @classmethod
+    def clean_title(cls, value: str) -> str:
+        return ExperimentFields.clean_title(value)
+
+
 class ExperimentPatch(VersionInput):
     title: str | None = Field(default=None, min_length=1, max_length=300)
     date: Date | None = None
@@ -100,7 +110,8 @@ class CompoundProperty(WriteModel):
 
 
 class CompoundFields(WriteModel):
-    name: str = Field(min_length=1, max_length=300)
+    name: str | None = Field(default=None, max_length=300)
+    codename: str | None = Field(default=None, max_length=300)
     smiles: str | None = Field(default=None, max_length=10000)
     molecular_formula: str | None = Field(default=None, max_length=200)
     molecular_weight: Decimal | None = Field(default=None, gt=0, max_digits=20, decimal_places=8)
@@ -111,13 +122,20 @@ class CompoundFields(WriteModel):
     physical_properties: list[CompoundProperty] = Field(default_factory=list, max_length=20)
     tag_ids: list[UUID] = Field(default_factory=list)
 
-    @field_validator("name")
+    @field_validator("cas_number")
     @classmethod
-    def clean_name(cls, value: str) -> str:
-        value = value.strip()
-        if not value:
-            raise ValueError("名称不能为空")
+    def valid_cas(cls, value: str | None) -> str | None:
+        from app.services.compound_lookup import _valid_cas
+
+        value = value.strip() or None if value is not None else None
+        if value is not None and not _valid_cas(value):
+            raise ValueError("CAS 号格式或校验位无效")
         return value
+
+    @field_validator("name", "codename", "cas_number")
+    @classmethod
+    def clean_identity(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
 
     @field_validator("smiles", "molecular_formula", "notes")
     @classmethod
@@ -134,6 +152,7 @@ class CompoundFields(WriteModel):
 
 class CompoundPatch(VersionInput):
     name: str | None = Field(default=None, min_length=1, max_length=300)
+    codename: str | None = Field(default=None, max_length=300)
     smiles: str | None = Field(default=None, max_length=10000)
     molecular_formula: str | None = Field(default=None, max_length=200)
     molecular_weight: Decimal | None = Field(default=None, gt=0, max_digits=20, decimal_places=8)
@@ -144,12 +163,20 @@ class CompoundPatch(VersionInput):
     physical_properties: list[CompoundProperty] | None = Field(default=None, max_length=20)
     tag_ids: list[UUID] | None = None
 
-    @field_validator("name")
+    @field_validator("cas_number")
     @classmethod
-    def clean_name(cls, value: str | None) -> str:
-        if value is None or not value.strip():
-            raise ValueError("名称不能为空")
-        return value.strip()
+    def valid_cas(cls, value: str | None) -> str | None:
+        from app.services.compound_lookup import _valid_cas
+
+        value = value.strip() or None if value is not None else None
+        if value is not None and not _valid_cas(value):
+            raise ValueError("CAS 号格式或校验位无效")
+        return value
+
+    @field_validator("name", "codename", "cas_number")
+    @classmethod
+    def clean_identity(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
 
     @field_validator("molecular_weight", mode="before")
     @classmethod
@@ -187,8 +214,8 @@ class ExperimentOut(RecordBase):
 
 
 class CompoundOut(RecordBase):
-    compound_code: str
-    name: str
+    name: str | None
+    codename: str | None = Field(default=None, max_length=300)
     smiles: str | None
     molecular_formula: str | None
     molecular_weight: Decimal | None

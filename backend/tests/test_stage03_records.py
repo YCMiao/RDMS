@@ -52,6 +52,14 @@ def test_crud_tags_and_relationships(client: TestClient) -> None:
     assert compound.status_code == 201, compound.text
     cmp = compound.json()
     assert cmp["molecular_weight"] == "154.21000000"
+    assert (
+        client.get("/api/compounds?sort=date_desc").json()
+        == client.get("/api/compounds?sort=created_desc").json()
+    )
+    assert (
+        client.get("/api/experiments?sort=created_desc").json()
+        == client.get("/api/experiments?sort=date_desc").json()
+    )
     relation = client.post(
         f"/api/experiments/{exp['id']}/compounds",
         json={"compound_id": cmp["id"], "expected_version": exp["version"]},

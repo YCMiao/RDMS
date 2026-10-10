@@ -38,8 +38,12 @@ def out(row: Sample | Reaction | ReactionComponent) -> dict[str, Any]:
         Reaction: (
             "experiment_id",
             "reaction_name",
+            "sort_order",
             "temperature_c",
+            "temperature_description",
             "reaction_time_hours",
+            "reaction_time_minutes",
+            "reaction_time_description",
             "atmosphere",
             "solvent",
             "workup",
@@ -109,20 +113,25 @@ def reactions(session: Session, experiment_id: UUID, number: int, size: int) -> 
         session,
         visibility.visible_reactions()
         .where(Reaction.experiment_id == experiment_id)
-        .order_by(Reaction.created_at, Reaction.id),
+        .order_by(Reaction.sort_order, Reaction.created_at, Reaction.id),
         number,
         size,
     )
 
 
-def components(session: Session, reaction_id: UUID, number: int, size: int) -> dict[str, Any]:
+def components(
+    session: Session, reaction_id: UUID, number: int, size: int, *, reactants_only: bool = False
+) -> dict[str, Any]:
     if session.scalar(visibility.visible_reactions().where(Reaction.id == reaction_id)) is None:
         raise missing()
+    statement = visibility.visible_components().where(ReactionComponent.reaction_id == reaction_id)
+    if reactants_only:
+        statement = statement.where(ReactionComponent.role != "product")
     return page(
         session,
-        visibility.visible_components()
-        .where(ReactionComponent.reaction_id == reaction_id)
-        .order_by(ReactionComponent.sort_order, ReactionComponent.created_at, ReactionComponent.id),
+        statement.order_by(
+            ReactionComponent.sort_order, ReactionComponent.created_at, ReactionComponent.id
+        ),
         number,
         size,
     )
@@ -252,7 +261,12 @@ def create_reaction(
     session: Session, experiment_id: UUID, payload: ReactionFields
 ) -> dict[str, Any]:
     lock_record(session, Experiment, experiment_id)
-    row = Reaction(experiment_id=experiment_id, **payload.model_dump())
+    order = session.scalar(
+        select(func.coalesce(func.max(Reaction.sort_order), 0)).where(
+            Reaction.experiment_id == experiment_id
+        )
+    )
+    row = Reaction(experiment_id=experiment_id, sort_order=(order or 0) + 1, **payload.model_dump())
     session.add(row)
     session.commit()
     session.refresh(row)
@@ -266,6 +280,14 @@ def patch_reaction(session: Session, reaction_id: UUID, payload: ReactionPatch) 
     if row.version != payload.expected_version:
         raise conflict()
     changes = payload.model_dump(exclude_unset=True, exclude={"expected_version"})
+    # A non-null condition selects its representation, including legacy hours/Celsius writes.
+    for group in (
+        ("temperature_c", "temperature_description"),
+        ("reaction_time_hours", "reaction_time_minutes", "reaction_time_description"),
+    ):
+        selected = next((key for key in group if changes.get(key) is not None), None)
+        if selected is not None:
+            changes.update({key: None for key in group if key != selected})
     if "reaction_name" in changes and (
         changes["reaction_name"] is None or not changes["reaction_name"].strip()
     ):

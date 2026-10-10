@@ -126,7 +126,7 @@ def label(kind: TrashType, row: Any) -> str:
     if kind == "experiment":
         return f"{row.experiment_code} · {row.title}"
     if kind == "compound":
-        return f"{row.compound_code} · {row.name}"
+        return f"{row.cas_number or 'CAS 待确认'} · {row.name or row.codename or '名称待补充'}"
     if kind == "sample":
         return f"{row.sample_code} · {row.name or row.sample_type}"
     if kind == "reaction":

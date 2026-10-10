@@ -12,6 +12,10 @@ from app.core.config import get_settings
 CAS_PATTERN = re.compile(r"^\d{2,7}-\d{2}-\d$")
 
 
+class LookupAuthError(LookupError):
+    """The reference service rejected the configured API credential."""
+
+
 def _read_json(url: str, *, api_key: str | None = None) -> dict[str, Any]:
     headers = {"User-Agent": "RDMS/0.1 (personal chemistry records)", "Accept": "application/json"}
     if api_key:
@@ -19,7 +23,11 @@ def _read_json(url: str, *, api_key: str | None = None) -> dict[str, Any]:
     try:
         with urlopen(Request(url, headers=headers), timeout=8) as response:
             raw = response.read(2_000_001)
-    except (HTTPError, URLError, TimeoutError) as exc:
+    except HTTPError as exc:
+        if exc.code in {401, 403}:
+            raise LookupAuthError("公开资料服务拒绝当前密钥") from exc
+        raise LookupError("公开资料服务暂不可用") from exc
+    except (URLError, TimeoutError) as exc:
         raise LookupError("公开资料服务暂不可用") from exc
     if len(raw) > 2_000_000:
         raise LookupError("公开资料响应超过大小限制")
@@ -107,6 +115,8 @@ def lookup(inchi_key: str) -> dict[str, Any]:
                                 "source_url": url,
                             }
                         )
+        except LookupAuthError:
+            warnings.append("CAS Common Chemistry 拒绝当前密钥；请向 CAS 核对有效期和接口权限")
         except (LookupError, TypeError, ValueError, KeyError):
             warnings.append("CAS Common Chemistry 当前不可用，可稍后重试")
     else:
@@ -163,3 +173,58 @@ def lookup(inchi_key: str) -> dict[str, Any]:
         "pubchem_cid": pubchem_cid,
         "warnings": warnings,
     }
+
+
+def lookup_cas(cas_number: str) -> dict[str, Any]:
+    """Return reference candidates, never create records or guess a CAS identity."""
+    candidates: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    try:
+        data = _read_json(
+            "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/"
+            f"{quote(cas_number, safe='')}/property/IUPACName,MolecularFormula,MolecularWeight/JSON"
+        )
+        properties = data.get("PropertyTable", {}).get("Properties", [])
+        if len(properties) > 5:
+            return {"candidates": [], "warnings": ["此 CAS 对应多个结果，请核对具体试剂身份"]}
+        for entry in properties:
+            cid = int(entry["CID"])
+            synonyms = _read_json(
+                f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/synonyms/JSON"
+            )
+            info = synonyms.get("InformationList", {}).get("Information", [])
+            if not any(
+                int(item.get("CID", 0)) == cid and cas_number in item.get("Synonym", [])
+                for item in info
+            ):
+                continue
+            name = entry.get("IUPACName")
+            formula = entry.get("MolecularFormula")
+            weight = entry.get("MolecularWeight")
+            if not isinstance(name, str) or not name.strip() or len(name) > 300:
+                continue
+            if not isinstance(formula, str) or not formula or len(formula) > 200:
+                continue
+            from decimal import Decimal, InvalidOperation
+
+            try:
+                mw = Decimal(str(weight))
+            except InvalidOperation:
+                continue
+            if not mw.is_finite() or not 0 < mw < Decimal("1e12"):
+                continue
+            candidates.append(
+                {
+                    "name": name,
+                    "cas_number": cas_number,
+                    "molecular_formula": formula,
+                    "molecular_weight": str(mw),
+                    "source": "PubChem CAS 同义词匹配",
+                    "source_url": f"https://pubchem.ncbi.nlm.nih.gov/compound/{cid}",
+                }
+            )
+    except (LookupError, TypeError, ValueError, KeyError, AttributeError):
+        warnings.append("公开资料查询失败或未收录此 CAS；可重试、选择本机记录或手动填写")
+    if not candidates and not warnings:
+        warnings.append("未找到可核对的 CAS 对应试剂，请选择本机记录或手动填写")
+    return {"candidates": candidates, "warnings": warnings}

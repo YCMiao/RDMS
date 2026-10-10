@@ -3,6 +3,7 @@
 import hashlib
 import json
 from datetime import UTC, datetime
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
 
@@ -26,7 +27,7 @@ def search(
     sections: dict[str, Any] = {}
     for model, fields, page in (
         (Experiment, ("title", "experiment_code"), experiment_page),
-        (Compound, ("name", "compound_code", "smiles"), compound_page),
+        (Compound, ("name", "codename", "cas_number", "smiles"), compound_page),
     ):
         predicates = [getattr(model, field).ilike(pattern, escape="\\") for field in fields]
         statement = select(model, *predicates).where(model.deleted_at.is_(None), or_(*predicates))
@@ -89,7 +90,7 @@ def summary(session: Session, experiment_id: UUID) -> SummaryOut:
     reaction_rows = session.scalars(
         visibility.visible_reactions()
         .where(Reaction.experiment_id == experiment_id)
-        .order_by(Reaction.created_at, Reaction.id)
+        .order_by(Reaction.sort_order, Reaction.created_at, Reaction.id)
     ).all()
     reaction_groups: list[ReactionSummary] = []
     for reaction in reaction_rows:
@@ -148,6 +149,15 @@ def markdown(summary: SummaryOut) -> str:
     def value(item: Any) -> str:
         return str(item) if item is not None and item != "" else "未记录"
 
+    def decimal_value(item: Decimal | None) -> str:
+        if item is None:
+            return "未记录"
+        rounded = item.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        if rounded == 0:
+            return "0"
+        text_value = format(rounded, "f")
+        return text_value.rstrip("0").rstrip(".") if "." in text_value else text_value
+
     lines = [
         f"# {experiment.experiment_code} · {experiment.title}",
         f"日期：{experiment.date.isoformat()}  状态：{experiment.status}",
@@ -167,12 +177,24 @@ def markdown(summary: SummaryOut) -> str:
         lines.append("未记录")
     for group in summary.reactions:
         reaction = group.reaction
+        temperature = (
+            reaction.temperature_description
+            if reaction.temperature_description is not None
+            else f"{decimal_value(reaction.temperature_c)} °C"
+        )
+        duration = (
+            reaction.reaction_time_description
+            if reaction.reaction_time_description is not None
+            else f"{decimal_value(reaction.reaction_time_minutes)} min"
+            if reaction.reaction_time_minutes is not None
+            else f"{decimal_value(reaction.reaction_time_hours)} h"
+        )
         lines.extend(
             [
                 "",
                 f"### {reaction.reaction_name}",
-                f"温度：{value(reaction.temperature_c)} °C；"
-                f"时间：{value(reaction.reaction_time_hours)} h；"
+                f"温度：{temperature}；"
+                f"时间：{duration}；"
                 f"气氛：{value(reaction.atmosphere)}；溶剂：{value(reaction.solvent)}",
                 f"后处理：{value(reaction.workup)}",
                 f"纯化：{value(reaction.purification)}",
@@ -184,9 +206,10 @@ def markdown(summary: SummaryOut) -> str:
         for component in group.components:
             lines.append(
                 f"- {component.role} · 化合物 {component.compound_id} · "
-                f"数量 {value(component.amount)} {value(component.unit)} · "
-                f"mmol {value(component.mmol)} · 当量 {value(component.equivalents)} · "
-                f"收率 {value(component.yield_percent)}%"
+                f"数量 {decimal_value(component.amount)} {value(component.unit)} · "
+                f"mmol {decimal_value(component.mmol)} · "
+                f"当量 {decimal_value(component.equivalents)} · "
+                f"收率 {decimal_value(component.yield_percent)}%"
             )
     lines.extend(["", "## 样品"])
     if not summary.samples:
@@ -194,8 +217,8 @@ def markdown(summary: SummaryOut) -> str:
     for sample in summary.samples:
         lines.append(
             f"- {sample.sample_code} · {value(sample.name)} · {sample.sample_type} · "
-            f"数量 {value(sample.amount)} {value(sample.unit)} · "
-            f"浓度 {value(sample.concentration)} {value(sample.concentration_unit)}"
+            f"数量 {decimal_value(sample.amount)} {value(sample.unit)} · "
+            f"浓度 {decimal_value(sample.concentration)} {value(sample.concentration_unit)}"
         )
     lines.extend(["", "## 文件"])
     if not summary.files:

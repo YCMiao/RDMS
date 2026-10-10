@@ -1,6 +1,6 @@
-# 最终验收索引（2026-09-24）
+# 最终验收索引（更新于 2026-10-01）
 
-所有表内“通过”均有实测记录。统一入口 `scripts/check.sh all` 在 2026-09-24 最近一次退出码 0：Ruff、mypy、独立 PostgreSQL pytest 29 项；ESLint、TypeScript、Vitest 13 项与生产构建；独立 PostgreSQL/上传临时文件系统上的 Playwright 5 项。各阶段的原始执行过程与失败修复见 [PROGRESS.md](../PROGRESS.md)。
+所有表内“通过”均有实测记录。2026-09-30 最新 `scripts/check.sh all` 退出码 0：Ruff、mypy、独立 PostgreSQL pytest 32 项；ESLint、TypeScript、Vitest 20 项与生产构建；独立 PostgreSQL/上传临时文件系统上的 Playwright 6 项。阶段历史与后续变更实测见 [PROGRESS.md](../PROGRESS.md)。
 
 | 验收 ID | 实测证据 |
 |---|---|
@@ -37,5 +37,20 @@
 | CHEM-01 | `backend/tests/test_compound_chemistry.py` 验证结构解析、派生值重算、重复检测、CAS 搜索及显式查询；`frontend/e2e/workflow.spec.ts` 在隔离浏览器中完成结构建档与重复提示。2026-09-24 `scripts/check.sh all` 退出 0：后端 29 项、前端 10 项、Playwright 4 项。默认服务迁移到 `3a4d8c1e6f20` 后健康；公开乙醇 InChIKey 实测 PubChem 返回 CID 702、CAS 候选及密度原文。CAS Common Chemistry 真密钥未配置，尚未做带密钥实测。 |
 | EXP-01 | `backend/tests/test_stage04_lab.py` 验证反应后处理和纯化创建、更新、清空；`test_stage06_discovery.py` 验证摘要包含这两个字段；`frontend/e2e/workflow.spec.ts` 验证结构图、当量、条件及后处理在实验详情出现。最近一次 `scripts/check.sh all` 退出码 0；默认库迁移到 `6b4f2c9e1d07` 后健康，实验、化合物、反应记录数仍为 0。 |
 | MASS-01 | `frontend/src/lib/format-mass.test.ts` 验证分子量最多 2 位、精确质量最多 4 位且不补尾零；`frontend/src/features/records.test.tsx` 验证仅编辑名称时原始分子量不被显示值覆盖；`frontend/e2e/workflow.spec.ts` 验证结构预览、详情和列表显示。 |
+| DOSE-01 | `backend/tests/test_compound_chemistry.py` 验证 CAS 校验、本机精确只读匹配、系统名称保存/搜索、PubChem CID 同义词核对和离线返回；`test_stage04_lab.py` 验证反应物分页过滤及历史产物保留。`frontend/src/features/reactant-editor.test.tsx` 验证请求竞态、候选选择、保存失败保留输入和复用已建试剂。`frontend/e2e/workflow.spec.ts` 完成 CAS 添加 → mg/mmol 补全 → 改为 mL → 刷新核对原始精度，并检查投料表顺序、多反应、按需展开和窄屏布局；总览恢复后的截图 `frontend/test-results/reaction-overview-and-table.png` 已目视核对。公开乙醇 `64-17-5` 只读网络实测返回 ethanol、C2H6O、46.07 和来源 CID 702。 |
+| OVERVIEW-01 | 2026-10-01 完成收尾：`frontend/e2e/workflow.spec.ts` 验证总览位于投料表之前，已有产物结构图、收率和条件可见，投料表不含结构图及产物；编辑投料后总览同步更新，多反应和窄屏布局继续通过。恢复版本 `scripts/check.sh all` 退出码 0：后端 32、前端 20、浏览器 6 项；截图 `frontend/test-results/reaction-overview-and-table.png` 已目视核对。 |
+| IDENTITY-01 | 2026-10-01：`test_compound_identity.py` 用临时表验证旧名称、软删除、版本与引用完整迁移，API 验证 CAS 校验、代号/名称/CAS 搜索和旧编号不再返回；浏览器新增 CAS/系统名称/代号保存搜索用例。最终全套检查退出 0：后端 34、前端 20、浏览器 7 项；`frontend/test-results/compound-identity.png` 和反应总览截图已目视核对。默认库名称补全及前后逐字段比对属于用户授权的数据维护，不是验收造数；记录见 `docs/compound-identity.md` 与 PROGRESS。 |
 
 隔离目标均只含合成数据；默认本机应用项目的数据库卷和上传根未用于验收写入。原始 `prompt0922.docx` SHA256 为 `711adf58248533f75ff40375fcc5374b71732073a143ac1cd44e6079ced10be9`。
+
+2026-10-10 eq/mmol 自动换算：隔离后端 34 项、前端 21 项及检查/构建、浏览器 7 项通过。浏览器验证按 2 mmol/eq 换算并保存刷新；完整入口因 npm 安装网络中断后分项补验，详情及日志见 PROGRESS。
+
+2026-10-10 实验复制：后端隔离 PostgreSQL 36 项，前端 21 项与 lint/类型/构建，隔离浏览器 8 项通过；新增测试验证独立草稿、精度与关联保留、历史结果排除及原实验未变，故障注入验证全部回滚。完整入口因旧 npm 依赖目录中断后分项补验，详见 PROGRESS。
+
+2026-10-10 产物入口：隔离后端 36 项、前端 22 项与检查/构建、浏览器 9 项通过。新增 UI 验证产物新增、编辑、完整精度与 0% 收率、刷新、删除、恢复、总览同步和窄屏；完整入口网络中断后用已检查依赖离线补验，详见 PROGRESS。
+
+2026-10-10 反应条件保存反馈：后端隔离 PostgreSQL 36 项、前端 23 项及检查/构建、隔离浏览器 10 项通过。验证字段校验失败后就地提示并保留输入、修正后保存、条件/处理重访完整保留、多反应互不覆盖、8 位小数与零值；完整入口因浏览器依赖执行权限中断后使用已检查依赖补验，详见 PROGRESS。
+
+2026-10-10 温度/时间表示：`scripts/check.sh all` 退出 0，后端独立 PostgreSQL 38 项、前端 24 项与检查/构建、隔离浏览器 11 项通过。新测试 `test_reaction_conditions.py` 及浏览器条件模式用例验证 °C/描述、h/min/描述、迁移保留旧数值及元数据、精度/零值、互斥规则、重访、复制和摘要；默认库迁移前备份已验证，迁移后原业务记录逐表相同。详见 PROGRESS。
+
+2026-10-10 复制反应顺序：`scripts/check.sh all` 退出 0，隔离后端 40 项、前端 24 项与检查/构建、浏览器 11 项通过。序号迁移保留旧字段与显示顺序，12 步跨页/连续复制/摘要/新建追加及浏览器三步复制刷新验证通过；授权纠正 EXP-2026-0004 与 0006，除序号及四行版本更新时间外全库原记录逐字段未变。详见 PROGRESS。

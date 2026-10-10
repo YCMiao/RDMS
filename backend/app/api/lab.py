@@ -110,11 +110,12 @@ def restore_reaction(reaction_id: UUID, payload: VersionInput, db: Session = DB)
 @router.get("/reactions/{reaction_id}/components", response_model=Page[ComponentOut])
 def components(
     reaction_id: UUID,
+    reactants_only: bool = False,
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     db: Session = DB,
 ) -> dict[str, Any]:
-    return lab.components(db, reaction_id, page, page_size)
+    return lab.components(db, reaction_id, page, page_size, reactants_only=reactants_only)
 
 
 @router.post("/reactions/{reaction_id}/components", response_model=ComponentOut, status_code=201)
