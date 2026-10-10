@@ -7,7 +7,7 @@ import App from "./App"
 describe("application shell", () => {
   afterEach(() => vi.restoreAllMocks())
 
-  it("shows the real service readiness state", async () => {
+  it("hides service details when ready", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async input =>
       new Response(JSON.stringify(String(input) === "/api/dashboard"
         ? { experiment_count: 0, compound_count: 0, sample_count: 0, recent_experiments: [], recent_files: [] }
@@ -21,7 +21,21 @@ describe("application shell", () => {
     )
 
     expect(screen.getByRole("navigation", { name: "主导航" })).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByText("系统就绪")).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole("heading", { name: "最近实验" })).toBeInTheDocument())
+    expect(screen.queryByText("系统状态")).not.toBeInTheDocument()
+    expect(screen.queryByText("查看 API 文档")).not.toBeInTheDocument()
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+  })
+
+  it("shows a brief alert when the service is unavailable", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async input =>
+      new Response(JSON.stringify(String(input) === "/api/dashboard"
+        ? { experiment_count: 0, compound_count: 0, sample_count: 0, recent_experiments: [], recent_files: [] }
+        : { status: "unavailable" }), { status: String(input) === "/api/dashboard" ? 200 : 503 }),
+    )
+    render(<MemoryRouter><App /></MemoryRouter>)
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("服务暂不可用，请重试"))
+    expect(screen.queryByText("查看 API 文档")).not.toBeInTheDocument()
   })
 
   it("shows an empty experiment list from the API", async () => {

@@ -37,12 +37,6 @@ const navigation = [
   { label: "设置", path: "/settings", icon: Settings },
 ]
 
-const statusCopy: Record<HealthStatus, { label: string; detail: string }> = {
-  checking: { label: "正在检查", detail: "正在确认数据库与文件存储" },
-  ready: { label: "系统就绪", detail: "API、数据库和存储均可响应" },
-  unavailable: { label: "服务未就绪", detail: "请检查后端、数据库或存储配置" },
-}
-
 function Placeholder({ title }: { title: string }) {
   return (
     <section className="empty-state" aria-labelledby="placeholder-title">
@@ -57,7 +51,6 @@ function Placeholder({ title }: { title: string }) {
 }
 
 function Dashboard({ status }: { status: HealthStatus }) {
-  const copy = statusCopy[status]
   const [data, setData] = useState<DashboardData | null>(null)
   const [error, setError] = useState("")
   useEffect(() => { void request<DashboardData>("/dashboard").then(setData).catch(reason => setError(reason instanceof Error ? reason.message : "总览读取失败")) }, [])
@@ -71,17 +64,9 @@ function Dashboard({ status }: { status: HealthStatus }) {
             保存实验、化合物、样品、反应与原始文件，并沿着关联查找证据。
           </p>
         </div>
-        <aside className={`status-card status-${status}`} aria-live="polite">
-          <div className="status-card-topline">
-            <span>系统状态</span>
-            <span className="status-dot" aria-hidden="true" />
-          </div>
-          <strong>{copy.label}</strong>
-          <p>{copy.detail}</p>
-          <a className="text-link" href="/api/docs">
-            查看 API 文档
-          </a>
-        </aside>
+        {status === "unavailable" && (
+          <p role="alert">服务暂不可用，请重试</p>
+        )}
       </section>
 
       <section className="runway" aria-label="有效记录统计">
