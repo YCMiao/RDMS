@@ -1,5 +1,5 @@
 import { Boxes, Plus } from "lucide-react"
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { Button } from "../components/ui/button"
 import { EmptyPanel } from "../components/empty-panel"
@@ -81,8 +81,10 @@ export function SampleEditor() {
   return <main className="records-page editor-page"><div className="page-heading"><div><span className="eyebrow">SAMPLE / {item?.sample_code}</span><h1>{item?.name || item?.sample_code || "样品"}</h1></div><Link to="/samples" className="text-link">返回样品</Link></div>{error && <p role="alert">{error}</p>}{item && <p>来源实验：<Link to={`/experiments/${item.experiment_id}`}>查看实验</Link> · 版本 {item.version}</p>}{deleted ? <Button onClick={() => void restore()}>恢复样品</Button> : item && <form className="record-form" onSubmit={event => void save(event)}><div className="form-grid"><label>名称<input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label><label>样品类型 *<input required value={form.sample_type} onChange={event => setForm({ ...form, sample_type: event.target.value })} /></label><CompoundPicker value={form.compound_id} onChange={value => setForm({ ...form, compound_id: value })} />{([ ["amount", "数量"], ["unit", "单位"], ["concentration", "浓度"], ["concentration_unit", "浓度单位"] ] as const).map(([key, label]) => <label key={key}>{label}<input value={form[key]} onChange={event => setForm({ ...form, [key]: event.target.value })} /></label>)}<label>备注<textarea value={form.notes} onChange={event => setForm({ ...form, notes: event.target.value })} /></label></div><div className="form-actions"><Button disabled={busy}>保存修改</Button><Button type="button" variant="outline" onClick={() => void remove()}>删除样品</Button><Button type="button" variant="outline" onClick={() => navigate("/samples")}>返回</Button></div></form>}</main>
 }
 
-function ReactionCard({ item, onChange }: { item: Reaction; onChange: () => void }) {
+function ReactionCard({ item, number, leaveGuard, onChange }: { item: Reaction; number: number; leaveGuard: { current: (() => boolean) | null }; onChange: () => void }) {
   const [form, setForm] = useState({ reaction_name: item.reaction_name, temperature_c: formatDecimalInput(item.temperature_c), temperature_description: item.temperature_description || "", temperature_mode: (item.temperature_description ? "description" : "celsius") as "celsius" | "description", reaction_time_hours: formatDecimalInput(item.reaction_time_hours), reaction_time_minutes: formatDecimalInput(item.reaction_time_minutes), reaction_time_description: item.reaction_time_description || "", time_mode: (item.reaction_time_description ? "description" : item.reaction_time_minutes != null ? "min" : "h") as "h" | "min" | "description", atmosphere: item.atmosphere || "", solvent: item.solvent || "", workup: item.workup || "", purification: item.purification || "", notes: item.notes || "" })
+  const savedForm = useRef(form)
+  const cardRef = useRef<HTMLElement>(null)
   const [version, setVersion] = useState(item.version)
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState("")
@@ -92,6 +94,13 @@ function ReactionCard({ item, onChange }: { item: Reaction; onChange: () => void
   const [error, setError] = useState("")
   const [editing, setEditing] = useState<Component | "new" | null>(null)
   const [compounds, setCompounds] = useState<Record<string, Compound>>({})
+  useEffect(() => {
+    leaveGuard.current = () => {
+      const pending = JSON.stringify(form) !== JSON.stringify(savedForm.current) || Boolean(cardRef.current?.querySelector("form.reactant-editor"))
+      return !pending || window.confirm("切换反应将丢弃未保存的修改，确定继续？")
+    }
+    return () => { leaveGuard.current = null }
+  }, [form, leaveGuard])
   useEffect(() => { let active = true; void request<Page<Component>>(`/reactions/${item.id}/components?${query({ page, page_size: 100, reactants_only: "true" })}`).then(result => { if (active) { if (!result.items.length && page > 1) setPage(page - 1); else setRows(result) } }).catch(reason => { if (active) setError(errorText(reason)) }); return () => { active = false } }, [item.id, page, revision])
   useEffect(() => {
     let active = true
@@ -109,6 +118,7 @@ function ReactionCard({ item, onChange }: { item: Reaction; onChange: () => void
     setSaving(true); setSaveMessage("")
     try {
       const result = await request<Reaction>(`/reactions/${item.id}`, { method: "PATCH", body: JSON.stringify({ expected_version: version, reaction_name: form.reaction_name, temperature_c: form.temperature_mode === "celsius" ? decimal(form.temperature_c) : null, temperature_description: form.temperature_mode === "description" ? decimal(form.temperature_description) : null, reaction_time_hours: form.time_mode === "h" ? decimal(form.reaction_time_hours) : null, reaction_time_minutes: form.time_mode === "min" ? decimal(form.reaction_time_minutes) : null, reaction_time_description: form.time_mode === "description" ? decimal(form.reaction_time_description) : null, atmosphere: form.atmosphere || null, solvent: form.solvent || null, workup: form.workup || null, purification: form.purification || null, notes: form.notes || null }) })
+      savedForm.current = form
       setVersion(result.version); onChange(); setSaveMessage("反应已保存")
     } catch (reason) {
       const labels: Record<string, string> = { reaction_name: "反应名称", temperature_c: "温度 °C", temperature_description: "温度描述", reaction_time_hours: "时间 h", reaction_time_minutes: "时间 min", reaction_time_description: "时间描述", atmosphere: "气氛", solvent: "溶剂", workup: "后处理", purification: "纯化", notes: "补充备注" }
@@ -123,7 +133,7 @@ function ReactionCard({ item, onChange }: { item: Reaction; onChange: () => void
   }
   async function removeComponent(row: Component) { if (!window.confirm("删除这个反应物？")) return; try { await request<void>(`/reactions/${item.id}/components/${row.id}?expected_version=${row.version}`, { method: "DELETE" }); setRevision(revision + 1) } catch (reason) { setError(errorText(reason)) } }
   async function removeReaction() { if (!window.confirm("删除整个反应及其可见组分？")) return; try { await request<void>(`/reactions/${item.id}?expected_version=${version}`, { method: "DELETE" }); onChange() } catch (reason) { setError(errorText(reason)) } }
-  return <article className="relation-section reaction-entry"><div className="reaction-entry-heading"><div><span className="eyebrow">REACTION</span><h3>{item.reaction_name}</h3></div><span className="reaction-count">{rows?.total ?? 0} 个反应物</span></div>{error && <p role="alert">{error}</p>}
+  return <article ref={cardRef} className="relation-section reaction-entry"><div className="reaction-entry-heading"><div><span className="eyebrow">REACTION {number}</span><h3>{item.reaction_name}</h3></div><span className="reaction-count">{rows?.total ?? 0} 个反应物</span></div>{error && <p role="alert">{error}</p>}
     <ReactionOverview reactionId={item.id} revision={revision} conditions={form} />
     <div className="dosing-heading"><div className="reaction-section-title"><span>01</span><h4>反应物与投料</h4></div><Button type="button" variant="outline" disabled={editing !== null} onClick={() => setEditing("new")}><Plus size={15} />添加反应物</Button></div>
     <div className="table-scroll dosing-table-scroll" tabIndex={0} aria-label="反应物投料表"><table className="dosing-table"><thead><tr><th scope="col">#</th><th scope="col">名称（系统命名）</th><th scope="col">化学式</th><th scope="col">CAS 号</th><th scope="col">Mw<small>g/mol</small></th><th scope="col">eq</th><th scope="col">mmol</th><th scope="col">mg</th><th scope="col">mL</th><th scope="col">操作</th></tr></thead><tbody>{rows ? rows.items.length ? rows.items.map((row, index) => {
@@ -140,6 +150,7 @@ function ReactionCard({ item, onChange }: { item: Reaction; onChange: () => void
 }
 
 export function ExperimentLab({ experimentId }: { experimentId: string }) {
+  const leaveGuard = useRef<(() => boolean) | null>(null)
   const [samples, setSamples] = useState<Page<Sample> | null>(null)
   const [reactions, setReactions] = useState<Page<Reaction> | null>(null)
   const [page, setPage] = useState(1)
@@ -147,8 +158,30 @@ export function ExperimentLab({ experimentId }: { experimentId: string }) {
   const [samplePage, setSamplePage] = useState(1)
   const [error, setError] = useState("")
   const [name, setName] = useState("")
+  useEffect(() => { setPage(1); setReactions(null) }, [experimentId])
   useEffect(() => { void request<Page<Sample>>(`/samples?${query({ experiment_id: experimentId, page: samplePage, page_size: 20 })}`).then(setSamples).catch(reason => setError(errorText(reason))) }, [experimentId, samplePage, revision])
-  useEffect(() => { void request<Page<Reaction>>(`/experiments/${experimentId}/reactions?${query({ page, page_size: 10 })}`).then(setReactions).catch(reason => setError(errorText(reason))) }, [experimentId, page, revision])
-  async function create(event: FormEvent) { event.preventDefault(); try { await request<Reaction>(`/experiments/${experimentId}/reactions`, { method: "POST", body: JSON.stringify({ reaction_name: name }) }); setName(""); setRevision(revision + 1) } catch (reason) { setError(errorText(reason)) } }
-  return <><section className="relation-section"><h2>反应记录</h2>{error && <p role="alert">{error}</p>}<form className="relation-picker" onSubmit={event => void create(event)}><label>新反应名称<input required value={name} onChange={event => setName(event.target.value)} /></label><Button>创建反应</Button></form>{reactions ? reactions.items.length ? <>{reactions.items.map(item => <ReactionCard key={item.id} item={item} onChange={() => setRevision(revision + 1)} />)}<p>第 {page} 页，共 {reactions.total} 个反应</p><Button type="button" variant="outline" disabled={page === 1} onClick={() => setPage(page - 1)}>上一页</Button> <Button type="button" variant="outline" disabled={page * 10 >= reactions.total} onClick={() => setPage(page + 1)}>下一页</Button></> : <p>暂无反应。</p> : <p>正在载入反应…</p>}</section><section className="relation-section"><h2>样品</h2>{samples ? samples.items.length ? <><p>共 {samples.total} 个样品</p><div className="table-scroll"><table><thead><tr><th>编号</th><th>名称</th><th>类型</th></tr></thead><tbody>{samples.items.map(item => <tr key={item.id}><td><Link to={`/samples/${item.id}`}>{item.sample_code}</Link></td><td>{item.name || "—"}</td><td>{item.sample_type}</td></tr>)}</tbody></table></div><Button type="button" variant="outline" disabled={samplePage === 1} onClick={() => setSamplePage(samplePage - 1)}>上一页</Button> <Button type="button" variant="outline" disabled={samplePage * 20 >= samples.total} onClick={() => setSamplePage(samplePage + 1)}>下一页</Button></> : <p>暂无样品。</p> : <p>正在载入样品…</p>}<Link className="text-link" to="/samples">创建或管理样品</Link></section></>
+  useEffect(() => {
+    let active = true
+    void request<Page<Reaction>>(`/experiments/${experimentId}/reactions?${query({ page, page_size: 1 })}`).then(result => {
+      if (!active) return
+      if (page > Math.max(1, result.total)) { setPage(Math.max(1, result.total)); return }
+      setReactions(result)
+    }).catch(reason => { if (active) setError(errorText(reason)) })
+    return () => { active = false }
+  }, [experimentId, page, revision])
+  function changePage(next: number) {
+    if (leaveGuard.current && !leaveGuard.current()) return
+    setPage(next)
+  }
+  async function create(event: FormEvent) {
+    event.preventDefault()
+    if (leaveGuard.current && !leaveGuard.current()) return
+    try {
+      await request<Reaction>(`/experiments/${experimentId}/reactions`, { method: "POST", body: JSON.stringify({ reaction_name: name }) })
+      setName("")
+      const result = await request<Page<Reaction>>(`/experiments/${experimentId}/reactions?page=1&page_size=1`)
+      setPage(Math.max(1, result.total)); setRevision(revision + 1)
+    } catch (reason) { setError(errorText(reason)) }
+  }
+  return <><section className="relation-section" aria-label="反应记录"><h2>反应记录</h2>{error && <p role="alert">{error}</p>}<form className="relation-picker" onSubmit={event => void create(event)}><label>新反应名称<input required value={name} onChange={event => setName(event.target.value)} /></label><Button>创建反应</Button></form>{reactions && reactions.page === page ? reactions.items.length ? <>{reactions.items.map(item => <ReactionCard key={item.id} item={item} number={page} leaveGuard={leaveGuard} onChange={() => setRevision(revision + 1)} />)}<p>第 {page} 页，共 {reactions.total} 个反应</p><Button type="button" variant="outline" disabled={page === 1} onClick={() => changePage(page - 1)}>上一页</Button> <Button type="button" variant="outline" disabled={page >= reactions.total} onClick={() => changePage(page + 1)}>下一页</Button></> : <p>暂无反应。</p> : <p>正在载入反应…</p>}</section><section className="relation-section"><h2>样品</h2>{samples ? samples.items.length ? <><p>共 {samples.total} 个样品</p><div className="table-scroll"><table><thead><tr><th>编号</th><th>名称</th><th>类型</th></tr></thead><tbody>{samples.items.map(item => <tr key={item.id}><td><Link to={`/samples/${item.id}`}>{item.sample_code}</Link></td><td>{item.name || "—"}</td><td>{item.sample_type}</td></tr>)}</tbody></table></div><Button type="button" variant="outline" disabled={samplePage === 1} onClick={() => setSamplePage(samplePage - 1)}>上一页</Button> <Button type="button" variant="outline" disabled={samplePage * 20 >= samples.total} onClick={() => setSamplePage(samplePage + 1)}>下一页</Button></> : <p>暂无样品。</p> : <p>正在载入样品…</p>}<Link className="text-link" to="/samples">创建或管理样品</Link></section></>
 }

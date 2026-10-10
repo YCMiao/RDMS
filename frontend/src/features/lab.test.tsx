@@ -63,7 +63,8 @@ describe("sample and reaction workflows", () => {
         reactions.push({ ...body, id: `reaction-${reactions.length + 1}`, experiment_id: experiment.id, version: 1, temperature_c: null, reaction_time_hours: null, atmosphere: null, solvent: null, notes: null })
         return respond(reactions.at(-1), 201)
       }
-      if (path.includes("/reactions?")) return respond({ ...empty, items: reactions, total: reactions.length })
+      if (init?.method === "DELETE") { reactions.pop(); return new Response(null, { status: 204 }) }
+      if (path.includes("/reactions?")) { const page = Number(new URL(path, "http://localhost").searchParams.get("page")); return respond({ ...empty, page, items: reactions.slice(page - 1, page), total: reactions.length }) }
       return respond(empty)
     })
     render(<MemoryRouter><ExperimentLab experimentId={experiment.id} /></MemoryRouter>)
@@ -75,6 +76,25 @@ describe("sample and reaction workflows", () => {
     await userEvent.click(screen.getByRole("button", { name: "创建反应" }))
     await waitFor(() => expect(screen.getByRole("heading", { name: "反应 B" })).toBeInTheDocument())
     expect(reactions.map(item => item.reaction_name)).toEqual(["反应 A", "反应 B"])
+    expect(screen.queryByRole("heading", { name: "反应 A" })).not.toBeInTheDocument()
+    expect(screen.getByText("REACTION 2")).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "上一页" }))
+    await screen.findByRole("heading", { name: "反应 A" })
+    expect(screen.queryByRole("heading", { name: "反应 B" })).not.toBeInTheDocument()
+    expect(screen.getByText("REACTION 1")).toBeInTheDocument()
+    await userEvent.type(screen.getByRole("textbox", { name: "反应名称 *" }), "未保存")
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false)
+    await userEvent.click(screen.getByRole("button", { name: "下一页" }))
+    expect(confirm).toHaveBeenCalled()
+    expect(screen.getByRole("heading", { name: "反应 A" })).toBeInTheDocument()
+    expect(screen.getByRole("textbox", { name: "反应名称 *" })).toHaveValue("反应 A未保存")
+    confirm.mockReturnValue(true)
+    await userEvent.click(screen.getByRole("button", { name: "下一页" }))
+    await screen.findByRole("heading", { name: "反应 B" })
+    await userEvent.click(screen.getByRole("button", { name: "删除反应" }))
+    await screen.findByRole("heading", { name: "反应 A" })
+    expect(screen.getByText("REACTION 1")).toBeInTheDocument()
+    expect(screen.getByRole("textbox", { name: "反应名称 *" })).toHaveValue("反应 A")
   })
 
   it("shows rejected condition fields beside save and preserves input for retry", async () => {
