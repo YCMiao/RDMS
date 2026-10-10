@@ -210,6 +210,12 @@ def markdown(summary: SummaryOut) -> str:
                 f"mmol {decimal_value(component.mmol)} · "
                 f"当量 {decimal_value(component.equivalents)} · "
                 f"收率 {decimal_value(component.yield_percent)}%"
+                + (" · 限制反应物" if component.is_limiting else "")
+                + (
+                    f" · 计量比 {decimal_value(component.stoichiometric_ratio)}"
+                    if component.stoichiometric_ratio is not None
+                    else ""
+                )
             )
     lines.extend(["", "## 样品"])
     if not summary.samples:

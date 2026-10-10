@@ -107,6 +107,7 @@ def copy_experiment(session: Session, source_id: UUID, payload: ExperimentCopy) 
                             "unit",
                             "mmol",
                             "equivalents",
+                            "is_limiting",
                             "yield_percent",
                             "sort_order",
                             "notes",

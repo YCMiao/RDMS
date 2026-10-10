@@ -67,7 +67,7 @@ docker compose --profile test run --rm frontend-test npm run generate:api
 - `/files`：按实验上传和查找原始文件，下载、编辑元数据、删除与恢复。单文件上限默认 100 MiB，支持 PDF、CSV、TXT、PNG、JPEG、JCAMP-DX、ZIP；多文件逐个上传。
 - `/search`：实验和化合物分组搜索、独立分页和命中字段；顶部可直接搜索。
 - 首页展示有效记录统计和最近五条实验、文件；实验详情可生成、复制和下载规则 Markdown 摘要。
-- 实验详情可管理多个反应及投料，并查看样品与原始文件。每个反应的“产物与收率”区可记录、编辑和删除多个产物，选择已有化合物或手动建档，保存产物量、mmol、收率和备注。投料表只显示非产物组分，总览同步展示产物；产物删除后可在回收站恢复。收率按实验实际记录填写，不自动推算。
+- 实验详情可管理多个反应及投料，并查看样品与原始文件。每个反应的“产物与收率”区可记录、编辑和删除多个产物，选择已有化合物或手动建档，保存产物量、mmol、收率和备注。投料表只显示非产物组分，总览同步展示产物；产物删除后可在回收站恢复。反应物可勾选“限制反应物”，同一反应仅一个且固定为 1 eq。产物计量比默认 1，表示每 1 mol 限制反应物生成的产物 mol 数；填写产物质量后按限制反应物 mmol、计量比与产物分子量自动计算收率，超过 100% 提示检查但允许保存，也可手动修改。旧记录不自动指定限制反应物、不批量重算已有收率。
 - `/settings`：创建、改名和删除标签，查看六类记录回收站及恢复阻塞原因。删除标签会清除分类关联，不删除科研记录。
 - 更新、删除和关联操作使用版本号；遇到冲突时刷新记录再决定如何处理。回收站仅列出自身被删除的记录。
 
@@ -77,7 +77,7 @@ docker compose --profile test run --rm frontend-test npm run generate:api
 
 化合物统一以 CAS 号编号，名称采用系统命名；原名称保留为独立“代号”，可按名称、代号、CAS 或 SMILES 搜索。系统不再分配 CMP 编号。查不到可核实 CAS 的记录显示“CAS 待确认”。联网资料和现有记录核验结果见 [化合物身份规范](docs/compound-identity.md)。
 
-mg 与 mmol 可按 Mw 补全空缺的一项，不覆盖已填数值。同一反应首次填写有效的 eq 和 mmol 后，后续投料按该比例在离开 eq 或 mmol 输入框时自动换算；mL 不自动换算为 mmol，避免假定密度或溶液浓度。旧记录的 g、kg、µg 和 L、µL 在表内分别换算成 mg、mL，仅改变展示，不改写保存的数值或单位。
+mg 与 mmol 可按 Mw 补全空缺的一项，不覆盖已填数值。同一反应优先按已勾选限制反应物的 mmol 确定 1 eq；没有限制反应物时沿用首次填写有效 eq 和 mmol 的比例。后续投料按该比例在离开 eq 或 mmol 输入框时自动换算；mL 不自动换算为 mmol，避免假定密度或溶液浓度。旧记录的 g、kg、µg 和 L、µL 在表内分别换算成 mg、mL，仅改变展示，不改写保存的数值或单位。
 
 交互参考与验证边界见 [投料表说明](docs/reactant-table.md)。
 
@@ -108,6 +108,8 @@ python3 scripts/rdms_data.py check --project rdms --upload-root ./data/uploads -
 python3 scripts/rdms_data.py backup --source-project rdms --source-upload-root ./data/uploads --destination ./backups/manual-20260924
 python3 scripts/rdms_data.py verify --backup ./backups/manual-20260924
 ```
+
+收率迁移 `e5b8d0f302ca` 只增加限制反应物标记与产物计量比，不重写原记录；保存过新标记或计量比后，直接降级会拒绝丢失内容，需从迁移前备份隔离恢复。
 
 反应条件迁移 `c9e2f4a601bd` 仅新增字段，保留旧摄氏度/小时数；已有描述或分钟记录时拒绝直接降级以避免丢失内容。需要回退时按下述步骤从迁移前备份隔离恢复。
 

@@ -3,6 +3,7 @@ import { Button } from "../components/ui/button"
 import { formatDecimal, formatDecimalInput } from "../lib/format-mass"
 import { request, type Compound, type Page } from "../services/records"
 import type { components } from "../types/api.generated"
+import { massToMg, productYield } from "../lib/yield"
 import { reactantRoles, validCas } from "../lib/reagents"
 import { CompoundPicker } from "./lab"
 
@@ -22,6 +23,11 @@ export function ReactantEditor({ reactionId, row, product = false, onSaved, onCa
   const [compoundId, setCompoundId] = useState(row?.compound_id || "")
   const [manual, setManual] = useState({ name: "", codename: "", molecular_formula: "", molecular_weight: "", cas_number: "" })
   const [form, setForm] = useState({ role: row?.role || (product ? "product" : "substrate"), amount: formatDecimalInput(row?.amount), unit: row?.unit || "mg", mmol: formatDecimalInput(row?.mmol), equivalents: formatDecimalInput(row?.equivalents), notes: row?.notes || "", yield_percent: formatDecimalInput(row?.yield_percent) })
+  const [isLimiting, setIsLimiting] = useState(row?.is_limiting || false)
+  const [ratio, setRatio] = useState(formatDecimalInput(row?.stoichiometric_ratio) || "1")
+  const [autoYield, setAutoYield] = useState(!row)
+  const [limitingMmol, setLimitingMmol] = useState<number | null>(null)
+  const [otherLimiting, setOtherLimiting] = useState(false)
   const [mmolPerEq, setMmolPerEq] = useState<number | null>(null)
   const [retry, setRetry] = useState(0)
   const [finding, setFinding] = useState(false)
@@ -53,28 +59,42 @@ export function ReactantEditor({ reactionId, row, product = false, onSaved, onCa
   useEffect(() => {
     let active = true
     setMmolPerEq(null)
-    if (product) return
+    setLimitingMmol(null); setOtherLimiting(false)
     async function loadBasis() {
       let page = 1
       let seen = 0
+      const rows: Component[] = []
       while (active) {
         const result = await request<Page<Component>>(`/reactions/${reactionId}/components?page=${page}&page_size=100&reactants_only=true`)
-        const basis = result.items.find(item => item.id !== row?.id && Number(item.mmol) > 0 && Number(item.equivalents) > 0)
-        if (basis) { if (active) setMmolPerEq(Number(basis.mmol) / Number(basis.equivalents)); return }
+        rows.push(...result.items)
         seen += result.items.length
-        if (!result.items.length || seen >= result.total) return
+        if (!result.items.length || seen >= result.total) break
         page++
       }
+      if (!active) return
+      const limiting = rows.find(item => item.is_limiting)
+      let n = limiting?.mmol != null ? Number(limiting.mmol) : null
+      if (limiting && n === null && limiting.amount !== null && massToMg[limiting.unit || ""]) {
+        const compound = await request<Compound>(`/compounds/${limiting.compound_id}`)
+        if (Number(compound.molecular_weight) > 0) n = Number(limiting.amount) * massToMg[limiting.unit || ""] / Number(compound.molecular_weight)
+      }
+      if (!active) return
+      setLimitingMmol(n); setOtherLimiting(Boolean(limiting && limiting.id !== row?.id))
+      const basis = rows.find(item => item.id !== row?.id && Number(item.mmol) > 0 && Number(item.equivalents) > 0)
+      if (limiting) setMmolPerEq(n && n > 0 ? n : null)
+      else if (basis) setMmolPerEq(Number(basis.mmol) / Number(basis.equivalents))
     }
     void loadBasis().catch(reason => { if (active) setError(errorText(reason)) })
     return () => { active = false }
   }, [reactionId, row?.id, product])
   const identity = mode === "manual" ? manual : selected
   const mw = Number(identity?.molecular_weight)
-  function switchMode(next: typeof mode) { setMode(next); setSelected(null); setCompoundId(""); setLookup(null); setFinding(false); setError(""); setCas("") }
+  const yieldResult = productYield(form.amount, form.unit, mw, limitingMmol, ratio)
+  const yieldValue = product && autoYield ? yieldResult.value || "" : form.yield_percent
+  function switchMode(next: typeof mode) { setMode(next); setSelected(null); setCompoundId(""); setLookup(null); setFinding(false); setError(""); setCas(""); if (product) setAutoYield(true) }
   const dosingValue = (number: number) => number.toFixed(8).replace(/\.?0+$/, "") || "0"
   function convertEquivalents(field: "mmol" | "equivalents") {
-    if (!(mmolPerEq && Number.isFinite(mmolPerEq)) || !form[field].trim()) return
+    if (product || isLimiting || !(mmolPerEq && Number.isFinite(mmolPerEq)) || !form[field].trim()) return
     const input = Number(form[field])
     if (!Number.isFinite(input) || input < 0) return
     setForm(current => ({ ...current, ...(field === "mmol"
@@ -83,8 +103,8 @@ export function ReactantEditor({ reactionId, row, product = false, onSaved, onCa
   }
   function calculate() {
     if (!(mw > 0) || form.unit !== "mg") return
-    if (form.amount.trim() && !form.mmol.trim()) setForm({ ...form, mmol: dosingValue(Number(form.amount) / mw), ...(mmolPerEq && !form.equivalents.trim() ? { equivalents: dosingValue(Number(form.amount) / mw / mmolPerEq) } : {}) })
-    else if (form.mmol.trim() && !form.amount.trim()) setForm({ ...form, amount: dosingValue(Number(form.mmol) * mw) })
+    if (form.amount.trim() && !form.mmol.trim()) setForm({ ...form, mmol: dosingValue(Number(form.amount) / mw), ...(!product && !isLimiting && mmolPerEq && !form.equivalents.trim() ? { equivalents: dosingValue(Number(form.amount) / mw / mmolPerEq) } : {}) })
+    else if (form.mmol.trim() && !form.amount.trim()) { setForm({ ...form, amount: dosingValue(Number(form.mmol) * mw) }); if (product) setAutoYield(true) }
   }
   async function save(event: FormEvent) {
     event.preventDefault()
@@ -108,7 +128,7 @@ export function ReactantEditor({ reactionId, row, product = false, onSaved, onCa
       await request<Component>(`/reactions/${reactionId}/components${row ? `/${row.id}` : ""}`, { method: row ? "PATCH" : "POST", body: JSON.stringify({
         ...(row && { expected_version: row.version }), compound_id: id, role: product ? "product" : form.role,
         amount: decimal(form.amount), unit: form.amount.trim() ? form.unit : null,
-        mmol: decimal(form.mmol), equivalents: decimal(form.equivalents), ...(product && { yield_percent: decimal(form.yield_percent) }), notes: form.notes || null,
+        mmol: decimal(form.mmol), equivalents: isLimiting ? "1" : decimal(form.equivalents), is_limiting: !product && isLimiting, ...(product && { yield_percent: decimal(yieldValue), stoichiometric_ratio: decimal(ratio), calculate_yield: autoYield && yieldResult.value !== undefined }), notes: form.notes || null,
       }) })
       onSaved()
     } catch (reason) { setError(errorText(reason)) } finally { saving.current = false; setBusy(false) }
@@ -118,10 +138,14 @@ export function ReactantEditor({ reactionId, row, product = false, onSaved, onCa
     <fieldset disabled={busy}>
       <div className="reactant-modes" aria-label={`选择${noun}方式`}>{([["cas", "按 CAS 查找"], ["local", product ? "本机化合物库" : "本机试剂库"], ["manual", "手动填写"]] as const).map(([value, label]) => <Button key={value} type="button" variant={mode === value ? "default" : "outline"} aria-pressed={mode === value} onClick={() => switchMode(value)}>{label}</Button>)}</div>
       {mode === "cas" && <div className="cas-search"><label>CAS 号<input ref={inputRef} value={cas} placeholder="例如 64-17-5" onChange={event => { setCas(event.target.value); setLookup(null); setSelected(null); setCompoundId(""); setFinding(false); setError("") }} /></label><p>输入完整 CAS 号后自动查找，优先使用本机试剂；未收录时查询 PubChem。</p>{cas.trim() && !validCas(cas.trim()) && <p>请输入有效的 CAS 号（含校验位）。</p>}{finding && <p role="status">正在查找试剂…</p>}{lookup?.warnings.map(message => <p key={message} role="status">{message}</p>)}{!finding && validCas(cas.trim()) && (error || Boolean(lookup?.warnings.length)) && <Button type="button" variant="outline" onClick={() => { setError(""); setRetry(retry + 1) }}>重新查询</Button>}{lookup && lookup.local_matches.length + lookup.candidates.length > 1 && <div className="cas-candidates"><p>找到多个匹配，请选择具体试剂：</p>{[...lookup.local_matches, ...lookup.candidates].map((candidate, index) => <Button key={index} type="button" variant="outline" onClick={() => { setSelected(candidate); setCompoundId("id" in candidate ? candidate.id : "") }}>{candidate.name || ("codename" in candidate ? candidate.codename : "系统名称待补充")} · {candidate.molecular_formula} · {"id" in candidate ? candidate.cas_number : "PubChem"}</Button>)}</div>}</div>}
-      {mode === "local" && <CompoundPicker value={compoundId} onChange={id => { setSelected(null); setCompoundId(id) }} />}
-      {mode === "manual" && <div className="form-grid">{([["name", "名称（IUPAC）"], ["codename", "代号"] , ["molecular_formula", "化学式"], ["cas_number", "CAS 号"], ["molecular_weight", "Mw (g/mol)"]] as const).map(([key, label]) => <label key={key}>{label}<input maxLength={key === "molecular_formula" ? 200 : 300} value={manual[key]} onChange={event => { setManual({ ...manual, [key]: event.target.value }); setCompoundId("") }} /></label>)}</div>}
+      {mode === "local" && <CompoundPicker value={compoundId} onChange={id => { setSelected(null); setCompoundId(id); if (product) setAutoYield(true) }} />}
+      {mode === "manual" && <div className="form-grid">{([["name", "名称（IUPAC）"], ["codename", "代号"] , ["molecular_formula", "化学式"], ["cas_number", "CAS 号"], ["molecular_weight", "Mw (g/mol)"]] as const).map(([key, label]) => <label key={key}>{label}<input maxLength={key === "molecular_formula" ? 200 : 300} value={manual[key]} onChange={event => { setManual({ ...manual, [key]: event.target.value }); setCompoundId(""); if (product && key === "molecular_weight") setAutoYield(true) }} /></label>)}</div>}
       {mode !== "manual" && selected && <div className="reagent-preview"><strong>{selected.name || "系统名称待补充"}</strong>{!selected.name && <small>系统名称待补充</small>}{"codename" in selected && selected.codename && <small>代号：{selected.codename}</small>}<dl><div><dt>化学式</dt><dd>{selected.molecular_formula || "—"}</dd></div><div><dt>CAS</dt><dd>{selected.cas_number || "—"}</dd></div><div><dt>Mw (g/mol)</dt><dd>{formatDecimal(selected.molecular_weight) || "—"}</dd></div></dl>{"source_url" in selected && <a className="text-link" href={selected.source_url} target="_blank" rel="noreferrer">查看 PubChem 资料</a>}</div>}
-      <div className="form-grid dosing-inputs">{!product && <label>角色<select value={form.role} onChange={event => setForm({ ...form, role: event.target.value as Role })}>{reactantRoles.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>} {!product && <label>eq<input type="number" min="0" step="any" value={form.equivalents} onBlur={() => convertEquivalents("equivalents")} onChange={event => setForm({ ...form, equivalents: event.target.value })} /></label>}<label>mmol<input type="number" min="0" step="any" value={form.mmol} onBlur={() => convertEquivalents("mmol")} onChange={event => setForm({ ...form, mmol: event.target.value })} /></label><label>{product ? "产物量" : "投料量"}<input type="number" min="0" step="any" value={form.amount} onChange={event => setForm({ ...form, amount: event.target.value })} /></label><label>单位<select value={form.unit} onChange={event => setForm({ ...form, unit: event.target.value })}>{[...new Set(["mg", "mL", ...(row?.unit ? [row.unit] : [])])].map(unit => <option key={unit}>{unit}</option>)}</select></label>{product && <label>收率 %<input type="number" min="0" step="any" value={form.yield_percent} onChange={event => setForm({ ...form, yield_percent: event.target.value })} /></label>}</div>
+      {!product && <label className="limiting-choice"><input type="checkbox" checked={isLimiting} disabled={otherLimiting && !isLimiting} onChange={event => { setIsLimiting(event.target.checked); if (event.target.checked) setForm({ ...form, equivalents: "1" }) }} />限制反应物（1 eq）</label>}
+      {!product && otherLimiting && <p className="helper">已有一个限制反应物；更换前请取消原来的勾选。</p>}
+      <div className="form-grid dosing-inputs">{!product && <label>角色<select value={form.role} onChange={event => setForm({ ...form, role: event.target.value as Role })}>{reactantRoles.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>} {!product && <label>eq<input type="number" min="0" step="any" readOnly={isLimiting} value={isLimiting ? "1" : form.equivalents} onBlur={() => convertEquivalents("equivalents")} onChange={event => setForm({ ...form, equivalents: event.target.value })} /></label>}<label>mmol<input type="number" min="0" step="any" value={form.mmol} onBlur={() => convertEquivalents("mmol")} onChange={event => setForm({ ...form, mmol: event.target.value })} /></label><label>{product ? "产物量" : "投料量"}<input type="number" min="0" step="any" value={form.amount} onChange={event => { setForm({ ...form, amount: event.target.value }); if (product) setAutoYield(true) }} /></label><label>单位<select value={form.unit} onChange={event => { setForm({ ...form, unit: event.target.value }); if (product) setAutoYield(true) }}>{[...new Set(["mg", ...(product ? ["g", "µg"] : []), "mL", ...(row?.unit ? [row.unit] : [])])].map(unit => <option key={unit}>{unit}</option>)}</select></label>{product && <label>计量比<input type="number" min="0.00000001" step="any" value={ratio} onChange={event => { setRatio(event.target.value); setAutoYield(true) }} /><small>每 1 mol 限制反应物生成的产物 mol 数</small></label>}{product && <label>收率 %<input type="number" min="0" step="any" value={yieldValue} onChange={event => { setForm({ ...form, yield_percent: event.target.value }); setAutoYield(false) }} /></label>}</div>
+      {product && autoYield && yieldResult.message && <p role="status">{yieldResult.message}</p>}
+      {product && autoYield && yieldResult.value !== undefined && <p className="helper">收率已自动计算，可手动修改。</p>}
       <div className="dosing-hint"><Button type="button" variant="outline" disabled={!(mw > 0) || form.unit !== "mg" || Boolean(form.amount.trim()) === Boolean(form.mmol.trim())} onClick={calculate}>按 Mw 补全 mg / mmol</Button><span>{!product && (mmolPerEq ? `本反应 1 eq = ${formatDecimal(mmolPerEq)} mmol；填写 eq 或 mmol 后离开输入框自动换算。` : "首次填写一组 eq 和 mmol 作为本反应换算基准。")}mL 不自动换算，避免假定密度或溶液浓度。</span></div>
       <label>{product ? "产物备注" : "投料备注"}<textarea value={form.notes} onChange={event => setForm({ ...form, notes: event.target.value })} rows={2} /></label>
     </fieldset>

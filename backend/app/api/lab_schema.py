@@ -24,6 +24,7 @@ class NumericInput(WriteModel):
         "mmol",
         "equivalents",
         "yield_percent",
+        "stoichiometric_ratio",
         check_fields=False,
         mode="before",
     )
@@ -134,6 +135,11 @@ class ReactionPatch(ReactionConditions, VersionInput):
 class ComponentFields(NumericInput):
     compound_id: UUID
     role: Role
+    is_limiting: bool = False
+    stoichiometric_ratio: Decimal | None = Field(
+        default=None, gt=0, max_digits=20, decimal_places=8
+    )
+    calculate_yield: bool = False
     amount: Decimal | None = Field(default=None, ge=0, max_digits=20, decimal_places=8)
     unit: str | None = Field(default=None, min_length=1, max_length=50)
     mmol: Decimal | None = Field(default=None, ge=0, max_digits=20, decimal_places=8)
@@ -146,6 +152,11 @@ class ComponentFields(NumericInput):
 class ComponentPatch(NumericInput, VersionInput):
     compound_id: UUID | None = None
     role: Role | None = None
+    is_limiting: bool | None = None
+    stoichiometric_ratio: Decimal | None = Field(
+        default=None, gt=0, max_digits=20, decimal_places=8
+    )
+    calculate_yield: bool = False
     amount: Decimal | None = Field(default=None, ge=0, max_digits=20, decimal_places=8)
     unit: str | None = Field(default=None, min_length=1, max_length=50)
     mmol: Decimal | None = Field(default=None, ge=0, max_digits=20, decimal_places=8)
@@ -195,6 +206,8 @@ class ComponentOut(EntityBase):
     reaction_id: UUID
     compound_id: UUID
     role: Role
+    is_limiting: bool
+    stoichiometric_ratio: Decimal | None
     amount: Decimal | None
     unit: str | None
     mmol: Decimal | None

@@ -1,5 +1,6 @@
 """Stage 04 lifecycle rules and queries."""
 
+from decimal import Decimal, localcontext
 from typing import Any
 from uuid import UUID
 
@@ -59,6 +60,8 @@ def out(row: Sample | Reaction | ReactionComponent) -> dict[str, Any]:
             "mmol",
             "equivalents",
             "yield_percent",
+            "is_limiting",
+            "stoichiometric_ratio",
             "sort_order",
             "notes",
         ),
@@ -331,7 +334,8 @@ def create_component(
     if reaction.deleted_at is not None:
         raise missing()
     compound_locks(session, {payload.compound_id})
-    values = payload.model_dump(exclude={"sort_order"})
+    values = payload.model_dump(exclude={"sort_order", "calculate_yield"})
+    prepare_component(session, reaction_id, values, calculate_yield=payload.calculate_yield)
     validate(values, component=True)
     order = payload.sort_order
     if order is None:
@@ -376,12 +380,30 @@ def patch_component(
         raise missing()
     if row.version != payload.expected_version:
         raise conflict()
-    changes = payload.model_dump(exclude_unset=True, exclude={"expected_version"})
-    if any(changes.get(key, True) is None for key in ("compound_id", "role", "sort_order")):
+    changes = payload.model_dump(
+        exclude_unset=True, exclude={"expected_version", "calculate_yield"}
+    )
+    if any(
+        changes.get(key, True) is None
+        for key in ("compound_id", "role", "sort_order", "is_limiting")
+    ):
         raise RecordError(422, "VALIDATION_ERROR", "必填字段不能为 null")
     if changes.get("compound_id"):
         compound_locks(session, {changes["compound_id"]})
-    validate({**out(row), **changes}, component=True)
+    values = {**out(row), **changes}
+    prepare_component(
+        session,
+        reaction_id,
+        values,
+        component_id=component_id,
+        calculate_yield=payload.calculate_yield,
+    )
+    if values["is_limiting"]:
+        changes["equivalents"] = values["equivalents"]
+    if payload.calculate_yield:
+        changes["yield_percent"] = values["yield_percent"]
+        changes["stoichiometric_ratio"] = values["stoichiometric_ratio"]
+    validate(values, component=True)
     if not update_if_version(
         session, ReactionComponent, component_id, payload.expected_version, changes
     ):
@@ -401,6 +423,7 @@ def change_component(
         raise conflict()
     if restore:
         compound_locks(session, {row.compound_id})
+        prepare_component(session, reaction_id, out(row), component_id=component_id)
     if not update_if_version(
         session, ReactionComponent, component_id, version, {}, deleted=not restore
     ):
@@ -408,3 +431,76 @@ def change_component(
     session.commit()
     session.refresh(row)
     return out(row) if restore else None
+
+
+MASS_TO_MG = {
+    "mg": Decimal(1),
+    "g": Decimal(1000),
+    "kg": Decimal(1000000),
+    "ug": Decimal("0.001"),
+    "µg": Decimal("0.001"),
+    "μg": Decimal("0.001"),
+}
+
+
+def prepare_component(
+    session: Session,
+    reaction_id: UUID,
+    values: dict[str, Any],
+    *,
+    component_id: UUID | None = None,
+    calculate_yield: bool = False,
+) -> None:
+    """Parent reaction is locked by every caller, including restores."""
+    limiting = session.scalar(
+        select(ReactionComponent).where(
+            ReactionComponent.reaction_id == reaction_id,
+            ReactionComponent.deleted_at.is_(None),
+            ReactionComponent.is_limiting.is_(True),
+        )
+    )
+    if values.get("is_limiting"):
+        if values["role"] == "product":
+            raise RecordError(422, "VALIDATION_ERROR", "产物不能标为限制反应物")
+        if limiting is not None and limiting.id != component_id:
+            raise conflict("已有一个限制反应物，请先取消原来的勾选")
+        values["equivalents"] = Decimal(1)
+    if values.get("stoichiometric_ratio") is not None and values["role"] != "product":
+        raise RecordError(422, "VALIDATION_ERROR", "仅产物可填写计量比")
+    if not calculate_yield:
+        return
+    if values["role"] != "product":
+        raise RecordError(422, "VALIDATION_ERROR", "仅产物可计算收率")
+    if limiting is None:
+        raise RecordError(422, "VALIDATION_ERROR", "请先勾选限制反应物")
+    mmol = limiting.mmol
+    with localcontext() as context:
+        context.prec = 60
+        if mmol is None and limiting.amount is not None and limiting.unit in MASS_TO_MG:
+            source = session.get(Compound, limiting.compound_id)
+            if (
+                source is not None
+                and source.molecular_weight is not None
+                and source.molecular_weight > 0
+            ):
+                mmol = limiting.amount * MASS_TO_MG[limiting.unit] / source.molecular_weight
+        if mmol is None or mmol <= 0:
+            raise RecordError(
+                422, "VALIDATION_ERROR", "请填写限制反应物的有效 mmol，或质量与分子量"
+            )
+        compound = session.get(Compound, values["compound_id"])
+        if compound is None or compound.molecular_weight is None or compound.molecular_weight <= 0:
+            raise RecordError(422, "VALIDATION_ERROR", "请填写产物分子量")
+        if values.get("amount") is None or values.get("unit") not in MASS_TO_MG:
+            raise RecordError(422, "VALIDATION_ERROR", "请填写产物质量并选择质量单位")
+        ratio = values.get("stoichiometric_ratio") or Decimal(1)
+        result = (
+            values["amount"]
+            * MASS_TO_MG[values["unit"]]
+            / (mmol * ratio * compound.molecular_weight)
+            * 100
+        ).quantize(Decimal("0.00000001"))
+        if result >= Decimal("1000000000000"):
+            raise RecordError(422, "VALIDATION_ERROR", "计算收率超出可保存范围，请检查质量和计量比")
+        values["yield_percent"] = result
+        values["stoichiometric_ratio"] = ratio

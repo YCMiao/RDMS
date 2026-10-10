@@ -725,6 +725,18 @@ export interface components {
              * @enum {string}
              */
             role: "substrate" | "reagent" | "catalyst" | "ligand" | "base" | "solvent" | "additive" | "product";
+            /**
+             * Is Limiting
+             * @default false
+             */
+            is_limiting: boolean;
+            /** Stoichiometric Ratio */
+            stoichiometric_ratio?: number | string | null;
+            /**
+             * Calculate Yield
+             * @default false
+             */
+            calculate_yield: boolean;
             /** Amount */
             amount?: number | string | null;
             /** Unit */
@@ -774,6 +786,10 @@ export interface components {
              * @enum {string}
              */
             role: "substrate" | "reagent" | "catalyst" | "ligand" | "base" | "solvent" | "additive" | "product";
+            /** Is Limiting */
+            is_limiting: boolean;
+            /** Stoichiometric Ratio */
+            stoichiometric_ratio: string | null;
             /** Amount */
             amount: string | null;
             /** Unit */
@@ -797,6 +813,15 @@ export interface components {
             compound_id?: string | null;
             /** Role */
             role?: ("substrate" | "reagent" | "catalyst" | "ligand" | "base" | "solvent" | "additive" | "product") | null;
+            /** Is Limiting */
+            is_limiting?: boolean | null;
+            /** Stoichiometric Ratio */
+            stoichiometric_ratio?: number | string | null;
+            /**
+             * Calculate Yield
+             * @default false
+             */
+            calculate_yield: boolean;
             /** Amount */
             amount?: number | string | null;
             /** Unit */

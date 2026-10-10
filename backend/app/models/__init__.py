@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -18,6 +19,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -206,6 +208,21 @@ class ReactionComponent(Versioned, Base):
         CheckConstraint("equivalents IS NULL OR equivalents >= 0", name="equivalents_nonnegative"),
         CheckConstraint("yield_percent IS NULL OR yield_percent >= 0", name="yield_nonnegative"),
         CheckConstraint("yield_percent IS NULL OR role = 'product'", name="yield_product_only"),
+        CheckConstraint(
+            "NOT is_limiting OR (role <> 'product' "
+            "AND equivalents IS NOT NULL AND equivalents = 1)",
+            name="limiting_one_eq",
+        ),
+        CheckConstraint(
+            "stoichiometric_ratio IS NULL OR (role = 'product' AND stoichiometric_ratio > 0)",
+            name="product_ratio_positive",
+        ),
+        Index(
+            "ix_component_one_limiting",
+            "reaction_id",
+            unique=True,
+            postgresql_where=text("is_limiting AND deleted_at IS NULL"),
+        ),
         CheckConstraint("sort_order >= 0", name="sort_nonnegative"),
         Index("ix_component_reaction_order", "reaction_id", "sort_order", "created_at", "id"),
         Index("ix_component_compound_deleted", "compound_id", "deleted_at"),
@@ -223,6 +240,8 @@ class ReactionComponent(Versioned, Base):
     mmol: Mapped[Decimal | None] = mapped_column(NUMERIC)
     equivalents: Mapped[Decimal | None] = mapped_column(NUMERIC)
     yield_percent: Mapped[Decimal | None] = mapped_column(NUMERIC)
+    is_limiting: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    stoichiometric_ratio: Mapped[Decimal | None] = mapped_column(NUMERIC)
     sort_order: Mapped[int] = mapped_column(Integer, server_default="0")
     notes: Mapped[str | None] = mapped_column(Text)
 

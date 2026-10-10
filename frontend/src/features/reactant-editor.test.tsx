@@ -32,6 +32,65 @@ describe("CAS reagent entry", () => {
     await waitFor(() => expect(onSaved).toHaveBeenCalledOnce())
     expect(writes[1]).toMatchObject({ role: "product", amount: "44.12345678", unit: "mg", yield_percent: "0" })
   })
+  it("locks a limiting reactant at 1 eq and saves the explicit flag", async () => {
+    const writes: Record<string, unknown>[] = []
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+      if (init?.method === "POST") { const body = JSON.parse(String(init.body)); writes.push(body); return respond({ ...body, id: "c1" }, 201) }
+      return respond(empty)
+    })
+    const saved = mount()
+    await userEvent.click(screen.getByRole("button", { name: "手动填写" }))
+    await userEvent.type(screen.getByLabelText("名称（IUPAC）"), "底物")
+    await userEvent.type(screen.getByLabelText("eq"), "3")
+    await userEvent.click(screen.getByRole("checkbox", { name: "限制反应物（1 eq）" }))
+    expect(screen.getByLabelText("eq")).toHaveValue(1)
+    expect(screen.getByLabelText("eq")).toHaveAttribute("readonly")
+    await userEvent.type(screen.getByLabelText("mmol"), "2")
+    await userEvent.click(screen.getByRole("button", { name: "加入投料表" }))
+    await waitFor(() => expect(saved).toHaveBeenCalledOnce())
+    expect(writes[1]).toMatchObject({ is_limiting: true, equivalents: "1", mmol: "2" })
+  })
+  it("calculates product yield as mass and ratio change and allows manual override", async () => {
+    const writes: Record<string, unknown>[] = []
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      if (String(input).includes("/components?page=")) return respond({ ...empty, total: 1, items: [{ id: "limiting", is_limiting: true, mmol: "2", equivalents: "1" }] })
+      if (init?.method === "POST") { const body = JSON.parse(String(init.body)); writes.push(body); return respond({ ...body, id: "c1" }, 201) }
+      return respond(empty)
+    })
+    mount(true)
+    await userEvent.click(screen.getByRole("button", { name: "手动填写" }))
+    await userEvent.type(screen.getByLabelText("名称（IUPAC）"), "产物")
+    await userEvent.type(screen.getByLabelText("Mw (g/mol)"), "300")
+    await userEvent.type(screen.getByLabelText("产物量"), "960")
+    expect(screen.getByLabelText("收率 %")).toHaveValue(160)
+    expect(screen.getByText(/收率超过 100%/)).toBeVisible()
+    await userEvent.clear(screen.getByLabelText("计量比", { exact: false }))
+    await userEvent.type(screen.getByLabelText("计量比", { exact: false }), "2")
+    expect(screen.getByLabelText("收率 %")).toHaveValue(80)
+    await userEvent.clear(screen.getByLabelText("收率 %"))
+    await userEvent.type(screen.getByLabelText("收率 %"), "57.12345678")
+    await userEvent.click(screen.getByRole("button", { name: "保存产物" }))
+    await waitFor(() => expect(writes).toHaveLength(2))
+    expect(writes[1]).toMatchObject({ yield_percent: "57.12345678", stoichiometric_ratio: "2", calculate_yield: false })
+  })
+  it("preserves an existing manual yield when opening and saving only notes", async () => {
+    const old = { id: "old-product", reaction_id: "r1", compound_id: "target", role: "product" as const, amount: "960", unit: "mg", mmol: null, equivalents: null, yield_percent: "57.12345678", stoichiometric_ratio: "2", is_limiting: false, sort_order: 0, notes: "", version: 1, created_at: "2026-10-10", updated_at: "2026-10-10" }
+    const writes: Record<string, unknown>[] = []
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      if (String(input).includes("/components?page=")) return respond({ ...empty, total: 1, items: [{ id: "limiting", is_limiting: true, mmol: "2", equivalents: "1" }] })
+      if (init?.method === "PATCH") { const body = JSON.parse(String(init.body)); writes.push(body); return respond({ ...old, ...body }) }
+      if (String(input) === "/api/compounds/target") return respond({ id: "target", name: "产物", molecular_weight: "300" })
+      return respond(empty)
+    })
+    const saved = vi.fn()
+    render(<MemoryRouter><ReactantEditor reactionId="r1" product row={old} onSaved={saved} onCancel={vi.fn()} /></MemoryRouter>)
+    await screen.findByText("产物", { selector: ".reagent-preview strong" })
+    expect(screen.getByLabelText("收率 %")).toHaveValue(57.12345678)
+    await userEvent.type(screen.getByLabelText("产物备注"), "只改备注")
+    await userEvent.click(screen.getByRole("button", { name: "保存产物" }))
+    await waitFor(() => expect(saved).toHaveBeenCalledOnce())
+    expect(writes[0]).toMatchObject({ yield_percent: "57.12345678", calculate_yield: false, notes: "只改备注" })
+  })
   it("finds a reagent without writing, then preserves identity and dosing on save", async () => {
     const writes: { path: string; body: Record<string, unknown> }[] = []
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {

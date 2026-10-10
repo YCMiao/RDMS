@@ -113,6 +113,15 @@ def reason(session: Session, kind: TrashType, row: Any) -> tuple[bool, str | Non
             return False, "请先恢复所属反应及实验"
         if not active(session, Compound, row.compound_id):
             return True, "请先恢复关联的化合物"
+        if row.is_limiting and session.scalar(
+            select(ReactionComponent.id).where(
+                ReactionComponent.reaction_id == row.reaction_id,
+                ReactionComponent.deleted_at.is_(None),
+                ReactionComponent.is_limiting.is_(True),
+                ReactionComponent.id != row.id,
+            )
+        ):
+            return True, "已有一个限制反应物，请先取消原来的勾选"
         return True, None
     parent_ok = active(session, Experiment, row.experiment_id)
     if not parent_ok:
