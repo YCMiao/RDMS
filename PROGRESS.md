@@ -1,5 +1,12 @@
 # 执行进度
 
+## 化合物列表按 CAS 新建（2026-10-11）
+
+- 在“从结构新建”左侧增加“根据CAS号新建”，打开共用居中弹窗。与实验新增反应物共用 CasCompoundSearch、CasCompoundPreview 和 casCompoundInput：CAS 格式/校验位检查，输入有效编号 500ms 后优先匹配本机，否则查询 PubChem；单候选自动选中、多候选明确选择，失败/警告支持重试，改号和关闭时忽略过时响应。
+- 预览名称、化学式、CAS、Mw 和结构图，可打开来源资料；公开候选可填代号并确认新建，结构、来源与来源备注同时保存，完成后进入详情。已有本机化合物提供“打开已有化合物”，不再创建重复记录；未确认候选不可提交，保存中禁止重复提交/关闭，关闭未保存输入须确认。原手工/结构新建和实验 CAS 投料流程保留。
+- `RDMS_CHECK_CACHED_DEPS=1 scripts/check.sh all` 退出 0：后端独立 PostgreSQL 63 项、前端 lint/类型/31 项/构建、隔离浏览器 20 项通过。新浏览器用例覆盖入口位置、无效编号、查询失败重试、多候选选择、结构图加载与保存、来源/代号、本机复用不增加记录及 390px 居中/无横向溢出，原实验 CAS 流程完成回归；公开查询在隔离用例中模拟，实际建档/结构接口验证真实执行。截图 frontend/test-results/cas-compound-dialog.png、cas-compound-dialog-mobile.png 已目视核对，日志 /tmp/rdms-cas-create-check.log。
+- 本机 frontend 已重建更新，线上资源确认含新入口、健康接口成功，真实 17 个化合物及全部已补结构保持。复用已有依赖缓存，无数据库迁移、后端接口改动或真实科研记录写入；隔离环境已清理，README/验收索引同步。部署/只读验收日志 /tmp/rdms-cas-create-deploy.log、/tmp/rdms-cas-create-live.json。
+
 ## 现有化合物结构补全（2026-10-11）
 
 - 用户授权查找并补全现有记录的全部缺失结构。当前 17 个有效化合物中缺失 4 个：DMF（68-12-2）、HATU（148893-10-1）、HCl（7647-01-0）、DCM（75-09-2）；DMF/HATU/DCM 经已有 CAS 补全接口核对并保存。

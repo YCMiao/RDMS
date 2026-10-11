@@ -970,3 +970,60 @@ test("实验与化合物详情按列表顺序切换，跨页并保护未保存�
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy()
   await page.screenshot({ path: "test-results/record-navigation-mobile.png", fullPage: false })
 })
+
+test("化合物列表按 CAS 建档，重试/多候选/结构保存及本机复用", async ({ page, request }) => {
+  const prefix = `CAS新建-${Date.now()}`
+  const preview = await (await request.post("/api/compounds/structure/preview", { data: { structure: "c1ccccc1" } })).json()
+  let calls = 0
+  await page.route("**/api/compounds/cas/lookup", async route => {
+    calls++
+    expect(route.request().postDataJSON()).toEqual({ cas_number: "71-43-2" })
+    if (calls === 1) { await route.abort(); return }
+    await route.fulfill({ json: { local_matches: [], candidates: [
+      { ...preview, name: `${prefix}-A`, cas_number: "71-43-2", source: "PubChem CAS 同义词匹配", source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/241" },
+      { ...preview, name: `${prefix}-B`, cas_number: "71-43-2", source: "PubChem CAS 同义词匹配", source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/241" },
+    ], warnings: [] } })
+  })
+  await page.goto("/compounds")
+  const actions = page.locator(".page-heading .heading-actions")
+  expect((await actions.getByRole("button", { name: "根据CAS号新建" }).boundingBox())!.x).toBeLessThan((await actions.getByRole("link", { name: "从结构新建" }).boundingBox())!.x)
+  await page.getByRole("button", { name: "根据CAS号新建" }).click()
+  const dialog = page.getByRole("dialog", { name: "根据CAS号新建" })
+  await expectCenteredDialog(page, dialog)
+  await dialog.getByLabel("CAS 号", { exact: true }).fill("71-43-1")
+  await expect(dialog.getByText("请输入有效的 CAS 号（含校验位）。")).toBeVisible()
+  await expect(dialog.getByRole("button", { name: "创建化合物" })).toBeDisabled()
+  expect(calls).toBe(0)
+  await dialog.getByLabel("CAS 号", { exact: true }).fill("71-43-2")
+  await expect(dialog.getByRole("alert")).toBeVisible()
+  await dialog.getByRole("button", { name: "重新查询" }).click()
+  await expect(dialog.getByText("找到多个匹配，请选择具体试剂：")).toBeVisible()
+  await expect(dialog.getByRole("button", { name: "创建化合物" })).toBeDisabled()
+  await dialog.getByRole("button", { name: new RegExp(`${prefix}-A`) }).click()
+  const image = dialog.getByRole("img", { name: `${prefix}-A 的化学结构` })
+  await expect(image).toBeVisible()
+  await expect.poll(() => image.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0)
+  await dialog.getByLabel("代号", { exact: true }).fill("benzene")
+  await page.screenshot({ path: "test-results/cas-compound-dialog.png" })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expectCenteredDialog(page, dialog)
+  expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBeTruthy()
+  await page.screenshot({ path: "test-results/cas-compound-dialog-mobile.png" })
+  await dialog.getByRole("button", { name: "创建化合物" }).click()
+  await expect(page.getByRole("heading", { name: `${prefix}-A`, exact: true })).toBeVisible()
+  const id = page.url().split("/").at(-1)!
+  const compound = await (await request.get(`/api/compounds/${id}`)).json()
+  expect(compound).toMatchObject({ codename: "benzene", cas_number: "71-43-2", inchi_key: preview.inchi_key, cas_source: "PubChem CAS 同义词匹配", notes: "资料来源：https://pubchem.ncbi.nlm.nih.gov/compound/241" })
+  expect(compound.structure_molfile).toContain("M  END")
+  expect((await request.get(`/api/compounds/${id}/structure.svg`)).status()).toBe(200)
+  await page.unroute("**/api/compounds/cas/lookup")
+  const totalBefore = (await (await request.get("/api/compounds")).json()).total
+  await page.goto("/compounds")
+  await page.getByRole("button", { name: "根据CAS号新建" }).click()
+  await dialog.getByLabel("CAS 号", { exact: true }).fill("71-43-2")
+  await expect(dialog.getByText("本机已有该化合物")).toBeVisible()
+  await expect(dialog.getByRole("button", { name: "创建化合物" })).toHaveCount(0)
+  await dialog.getByRole("link", { name: "打开已有化合物" }).click()
+  await expect(page.getByRole("heading", { name: `${prefix}-A`, exact: true })).toBeVisible()
+  expect((await (await request.get("/api/compounds")).json()).total).toBe(totalBefore)
+})

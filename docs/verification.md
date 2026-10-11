@@ -10,6 +10,7 @@
 | DB-01 | `backend/tests/test_stage02_data.py` 的 schema/非法关系检查；每次 backend 检查从空 tmpfs PostgreSQL 迁移。 |
 | NUM-01 | `test_fifty_independent_transactions_and_committed_number_not_reused`：50 个独立事务并发创建。 |
 | NUM-02 | `test_calendar_year_timezone_width_and_rollback`：跨年、宽度、回滚及日期更新。 |
+| CAS-CREATE-01 | `frontend/e2e/workflow.spec.ts` 验证化合物列表 CAS 入口顺序、无效编号、查询失败重试、多候选显式选择、结构与来源保存、本机匹配不重复创建，以及居中弹窗桌面/窄屏边界。实验 CAS 流程复用同一查询/预览与建档函数，并由原单元/浏览器流程回归验证。 |
 | NAV-01 | `backend/tests/test_record_neighbors.py` 验证相邻实验/化合物与列表的排序、筛选、本内范围、回收站排除一致；`frontend/e2e/workflow.spec.ts` 验证跨页切换、首尾禁用、表单重载、未保存保护、返回筛选列表及窄屏无溢出。 |
 | CRUD-01 | `backend/tests/test_stage03_records.py` 的 CRUD、标签失败原子性。 |
 | REL-01 | 同文件的关系增删与 Compound 引用阻断测试。 |

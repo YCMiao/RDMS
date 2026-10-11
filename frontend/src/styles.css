@@ -435,3 +435,6 @@ td a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .record-navigation .heading-actions { align-items: center; }
 .record-navigation .text-link { margin-left: 8px; }
 .record-navigation p { margin-top: 8px; }
+
+.cas-compound-dialog fieldset { min-width: 0; padding: 0; border: 0; display: grid; gap: 16px; }
+.cas-compound-dialog .form-actions { align-items: center; flex-wrap: wrap; }
