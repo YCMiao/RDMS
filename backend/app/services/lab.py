@@ -123,13 +123,24 @@ def reactions(session: Session, experiment_id: UUID, number: int, size: int) -> 
 
 
 def components(
-    session: Session, reaction_id: UUID, number: int, size: int, *, reactants_only: bool = False
+    session: Session,
+    reaction_id: UUID,
+    number: int,
+    size: int,
+    *,
+    reactants_only: bool = False,
+    solvents_only: bool = False,
+    exclude_solvents: bool = False,
 ) -> dict[str, Any]:
     if session.scalar(visibility.visible_reactions().where(Reaction.id == reaction_id)) is None:
         raise missing()
     statement = visibility.visible_components().where(ReactionComponent.reaction_id == reaction_id)
     if reactants_only:
         statement = statement.where(ReactionComponent.role != "product")
+    if solvents_only:
+        statement = statement.where(ReactionComponent.role == "solvent")
+    if exclude_solvents:
+        statement = statement.where(ReactionComponent.role != "solvent")
     return page(
         session,
         statement.order_by(

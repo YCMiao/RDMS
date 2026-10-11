@@ -1,5 +1,15 @@
 # 执行进度
 
+## 反应溶剂独立分区（2026-10-11）
+
+- 按用户要求重排为 01 投料、02 产物与收率、03 溶剂、04 条件与处理。投料查询排除 solvent 组分，溶剂独立表格显示名称、化学式、CAS 号、体积 (mL) 和操作；支持专用添加/编辑/删除入口及独立分页。溶剂编辑支持本机选择、CAS 查询、手工建档，显示体积/单位/备注，不显示 eq、mmol 或限制反应物；保留历史隐藏数值与原单位。L/µL 仅在表中换算为 mL，不改写原用量。
+- 新增组件列表 solvents_only/exclude_solvents 筛选，分类在分页前生效。条件与处理移除溶剂输入并不再提交 solvent 字段，旧文字作为溶剂表兼容行保留；总览、复制、摘要及回收站继续沿用原 solvent 组分。OpenAPI 类型与 README 同步，无 schema 变更。
+- 原库只读清点：12 条 solvent 组分，独立 reaction.solvent 非空记录 0。已有数据本身包含所需角色分类，因此更新后直接映射至 03，无需重建、删除或修改数据行。上线后逐条通过新筛选接口核对 12 条原溶剂的 ID、化合物关联、用量、单位、备注及版本完全一致。全部 reaction_component 更新前后精确 JSON 快照 cmp 相同（/tmp/rdms-solvent-before.json、/tmp/rdms-solvent-after.json）。
+- 修改前 Git 基线 `1c57f9c`；备份 backups/pre-solvent-section-20261011 已完成并验证（/tmp/rdms-solvent-backup.log）。撤销本项提交并重建 backend/frontend 即可回滚界面和筛选；真实数据库及上传文件未重写，备份仍保留。
+- scripts/check.sh all 退出 0：后端初始 48 项，补充筛选/分页与原数据不变验证后后端 49 项通过；前端 lint/类型/31 项/构建、隔离浏览器 16 项通过。新增浏览器覆盖已有溶剂分离、体积换算、修改/新增、独立保存、重访及旧溶剂文字保留。截图 frontend/test-results/reaction-solvents.png 已核对。日志 /tmp/rdms-solvent-check.log、/tmp/rdms-solvent-backend-final.log；隔离容器与网络已清理。
+- 部署时 Docker 服务临时停止，重新启动后更新完成，就绪返回 {"status":"ok"}（/tmp/rdms-solvent-deploy-final.log）。真实上传文件全哈希检查 consistent=true（/tmp/rdms-solvent-data-after.log）。未向真实库写入测试记录或删除用户数据。
+
+
 ## 实验编号与标题双向排序（2026-10-11）
 
 - 实验列表保留日期双向排序，增加编号从大到小、编号从小到大、标题降序、标题升序四个选项。切换排序回到第一页，继续支持关键词、状态与日期筛选。

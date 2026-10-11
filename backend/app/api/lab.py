@@ -111,11 +111,21 @@ def restore_reaction(reaction_id: UUID, payload: VersionInput, db: Session = DB)
 def components(
     reaction_id: UUID,
     reactants_only: bool = False,
+    solvents_only: bool = False,
+    exclude_solvents: bool = False,
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     db: Session = DB,
 ) -> dict[str, Any]:
-    return lab.components(db, reaction_id, page, page_size, reactants_only=reactants_only)
+    return lab.components(
+        db,
+        reaction_id,
+        page,
+        page_size,
+        reactants_only=reactants_only,
+        solvents_only=solvents_only,
+        exclude_solvents=exclude_solvents,
+    )
 
 
 @router.post("/reactions/{reaction_id}/components", response_model=ComponentOut, status_code=201)

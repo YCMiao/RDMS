@@ -213,3 +213,33 @@ def test_parent_restore_rejects_deleted_compound(client: TestClient) -> None:
         client.get(f"/api/reactions/{reaction['id']}/components").json()["items"][0]["id"]
         == component["id"]
     )
+
+
+def test_solvent_and_dosing_pages_preserve_components(client: TestClient) -> None:
+    exp = create(client, "/api/experiments", {"title": "溶剂分区", "date": "2026-10-11"})
+    reaction = create(client, f"/api/experiments/{exp['id']}/reactions", {"reaction_name": "分区"})
+    compound = create(client, "/api/compounds", {"name": "分区化合物"})
+    path = f"/api/reactions/{reaction['id']}/components"
+    records = [
+        create(
+            client,
+            path,
+            {
+                "compound_id": compound["id"],
+                "role": role,
+                "amount": "3",
+                "unit": "mL",
+                "notes": "原始用量",
+            },
+        )
+        for role in ["substrate", "solvent", "product", "solvent"]
+    ]
+    solvents = client.get(f"{path}?solvents_only=true&page_size=1").json()
+    assert solvents["total"] == 2
+    assert solvents["items"] == [records[1]]
+    assert client.get(f"{path}?solvents_only=true&page_size=1&page=2").json()["items"] == [
+        records[3]
+    ]
+    dosing = client.get(f"{path}?reactants_only=true&exclude_solvents=true").json()
+    assert dosing["total"] == 1 and dosing["items"] == [records[0]]
+    assert client.get(path).json()["items"] == records

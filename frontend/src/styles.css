@@ -387,3 +387,9 @@ td a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .compound-list-table :is(th, td) { padding-left: 12px; padding-right: 12px; }
 .compound-list-table td { overflow-wrap: anywhere; }
 .compound-list-table .compound-selection-col { width: 44px; }
+
+.solvent-table { min-width: 720px; }
+.solvent-table th { background: var(--copper-soft); }
+.solvent-table small { display: block; margin-top: 5px; color: var(--muted); }
+.solvent-table td:first-child { width: 45%; overflow-wrap: anywhere; }
+.solvent-table :is(th, td):nth-child(4) { text-align: right; font-variant-numeric: tabular-nums; }

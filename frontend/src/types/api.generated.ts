@@ -3244,6 +3244,8 @@ export interface operations {
         parameters: {
             query?: {
                 reactants_only?: boolean;
+                solvents_only?: boolean;
+                exclude_solvents?: boolean;
                 page?: number;
                 page_size?: number;
             };
