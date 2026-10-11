@@ -4,10 +4,12 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import delete, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.records_schema import (
+    CompoundBulkTag,
     CompoundFields,
     CompoundPatch,
     ExperimentFields,
@@ -322,6 +324,34 @@ def change_deleted(
 
 def tag_output(tag: Tag) -> dict[str, Any]:
     return {"id": tag.id, "name": tag.name, "version": tag.version}
+
+
+def bulk_tag_compounds(session: Session, payload: CompoundBulkTag) -> dict[str, Any]:
+    compounds = []
+    for item in sorted(payload.compounds, key=lambda item: item.id):
+        record = lock_record(session, Compound, item.id)
+        check_version(record, item.expected_version)
+        compounds.append(record)
+    session.execute(
+        insert(Tag)
+        .values(name=payload.name, normalized_name=payload.name.casefold())
+        .on_conflict_do_nothing(index_elements=[Tag.normalized_name])
+    )
+    tag = session.scalar(
+        select(Tag)
+        .where(Tag.normalized_name == payload.name.casefold())
+        .with_for_update(read=True, key_share=True)
+    )
+    if tag is None:
+        raise conflict("标签已被修改，请重试")
+    for record in compounds:
+        existing = session.get(CompoundTag, (record.id, tag.id))
+        if existing is None:
+            session.add(CompoundTag(compound_id=record.id, tag_id=tag.id))
+            if not update_if_version(session, Compound, record.id, record.version, {}):
+                raise conflict()
+    session.commit()
+    return {"tag": tag_output(tag), "selected_count": len(compounds)}
 
 
 def create_tag(session: Session, name: str) -> dict[str, Any]:

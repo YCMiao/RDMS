@@ -217,3 +217,57 @@ def test_experiment_restore_waits_for_compound(client: TestClient) -> None:
         ).status_code
         == 200
     )
+
+
+def test_bulk_compound_tag_is_atomic_and_preserves_existing_tags(client: TestClient) -> None:
+    old_tag = client.post("/api/tags", json={"name": "旧分类"}).json()
+    compounds = [
+        client.post(
+            "/api/compounds", json={"name": f"批量化合物{i}", "tag_ids": [old_tag["id"]]}
+        ).json()
+        for i in range(2)
+    ]
+    selection = [{"id": c["id"], "expected_version": c["version"]} for c in compounds]
+    response = client.post(
+        "/api/compounds/bulk-tag", json={"name": " Batch ", "compounds": selection}
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["selected_count"] == 2
+    tag = response.json()["tag"]
+    for c in compounds:
+        updated = client.get(f"/api/compounds/{c['id']}").json()
+        assert {t["id"] for t in updated["tags"]} == {old_tag["id"], tag["id"]}
+        assert updated["version"] == c["version"] + 1
+    selection = [{"id": c["id"], "expected_version": c["version"] + 1} for c in compounds]
+    repeat = client.post("/api/compounds/bulk-tag", json={"name": "batch", "compounds": selection})
+    assert repeat.status_code == 200
+    assert repeat.json()["tag"]["id"] == tag["id"]
+    assert client.get(f"/api/compounds/{compounds[0]['id']}").json()["version"] == 2
+    stale = [dict(selection[0]), {"id": compounds[1]["id"], "expected_version": 1}]
+    assert (
+        client.post(
+            "/api/compounds/bulk-tag", json={"name": "不应创建", "compounds": stale}
+        ).status_code
+        == 409
+    )
+    assert client.get("/api/tags?q=不应创建").json()["total"] == 0
+    assert len(client.get(f"/api/compounds/{compounds[0]['id']}").json()["tags"]) == 2
+    assert (
+        client.post(
+            "/api/compounds/bulk-tag",
+            json={"name": "重复", "compounds": [selection[0], selection[0]]},
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post("/api/compounds/bulk-tag", json={"name": "空选", "compounds": []}).status_code
+        == 422
+    )
+    client.delete(f"/api/compounds/{compounds[1]['id']}?expected_version=2")
+    assert (
+        client.post(
+            "/api/compounds/bulk-tag", json={"name": "已删除", "compounds": selection}
+        ).status_code
+        == 404
+    )
+    assert client.get("/api/tags?q=已删除").json()["total"] == 0

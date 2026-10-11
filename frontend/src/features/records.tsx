@@ -45,30 +45,49 @@ export function RecordList({ kind }: { kind: Kind }) {
   const [error, setError] = useState("")
   const [createOpen, setCreateOpen] = useState(false)
   const [copyOpen, setCopyOpen] = useState(false)
+  const [multi, setMulti] = useState(false)
+  const [selected, setSelected] = useState<Record<string, number>>({})
+  const [bulkName, setBulkName] = useState("")
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkNotice, setBulkNotice] = useState("")
+  const [revision, setRevision] = useState(0)
+  useEffect(() => { setSelected({}); setBulkNotice("") }, [kind, search, page, sort, tagId])
+  async function bulkTag(event: FormEvent) {
+    event.preventDefault()
+    if (bulkBusy || !Object.keys(selected).length || !bulkName.trim()) return
+    setBulkBusy(true); setError(""); setBulkNotice("")
+    try {
+      const result = await request<components["schemas"]["CompoundBulkTagOut"]>("/compounds/bulk-tag", { method: "POST", body: JSON.stringify({ name: bulkName.trim(), compounds: Object.entries(selected).map(([id, expected_version]) => ({ id, expected_version })) }) })
+      setBulkNotice(`已为 ${result.selected_count} 个化合物添加标签`)
+      setSelected({}); setBulkName(""); setMulti(false); setRevision(current => current + 1)
+    } catch (reason) { setError(message(reason)) } finally { setBulkBusy(false) }
+  }
   const effectiveSort = kind === "experiments"
     ? (sort === "date_asc" || sort === "date_desc" ? sort : "date_desc")
     : (sort === "name_asc" || sort === "created_desc" ? sort : "created_desc")
-  useEffect(() => { if (kind === "compounds") void request<Page<Tag>>("/tags?page_size=100").then(result => setTags(result.items)).catch(() => undefined) }, [kind])
+  useEffect(() => { if (kind === "compounds") void request<Page<Tag>>("/tags?page_size=100").then(result => setTags(result.items)).catch(() => undefined) }, [kind, revision])
   useEffect(() => {
     let live = true
     setData(null); setError("")
     const path = `/${kind}?${query({ q: search, page, page_size: 25, sort: effectiveSort, tag_id: kind === "compounds" ? tagId : undefined, ...(kind === "experiments" ? { status, date_from: dateFrom, date_to: dateTo } : {}) })}`
     void request<Page<RecordItem>>(path).then(result => { if (live) setData(result) }).catch(reason => { if (live) setError(message(reason)) })
     return () => { live = false }
-  }, [kind, search, page, effectiveSort, status, dateFrom, dateTo, tagId])
+  }, [kind, search, page, effectiveSort, status, dateFrom, dateTo, tagId, revision])
   const experiment = kind === "experiments"
   return <main className="records-page">
-    <div className="page-heading"><div><span className="eyebrow">RDMS / {experiment ? "Experiments" : "Compounds"}</span><h1>{experiment ? "实验记录" : "化合物"}</h1></div>{experiment ? <div className="heading-actions"><Button asChild><Link to="/experiments/new">新建实验</Link></Button><Button variant="outline" onClick={() => setCopyOpen(true)}>从现有实验复制</Button></div> : <div className="heading-actions"><Button asChild><Link to="/compounds/import">从结构新建</Link></Button><Button variant="outline" onClick={() => setCreateOpen(true)}>新建化合物</Button></div>}</div>
-    <form className="filter-bar" onSubmit={event => { event.preventDefault(); setPage(1); setSearch(q) }}>
+    <div className="page-heading"><div><span className="eyebrow">RDMS / {experiment ? "Experiments" : "Compounds"}</span><h1>{experiment ? "实验记录" : "化合物"}</h1></div>{experiment ? <div className="heading-actions"><Button asChild><Link to="/experiments/new">新建实验</Link></Button><Button variant="outline" onClick={() => setCopyOpen(true)}>从现有实验复制</Button></div> : <div className="heading-actions"><Button asChild><Link to="/compounds/import">从结构新建</Link></Button><Button variant="outline" onClick={() => setCreateOpen(true)}>新建化合物</Button><Button variant="outline" disabled={bulkBusy} onClick={() => { setMulti(current => !current); setSelected({}); setBulkNotice("") }}>{multi ? "取消多选" : "多选"}</Button></div>}</div>
+    <form className="filter-bar" inert={bulkBusy} onSubmit={event => { event.preventDefault(); setPage(1); setSearch(q) }}>
       <label>关键词<input value={q} onChange={event => setQ(event.target.value)} placeholder={experiment ? "标题或编号" : "名称、代号、CAS 或 SMILES"} /></label>
       <Button type="submit" variant="outline">搜索</Button>
       {!experiment && <label>标签<select value={tagId} onChange={event => { setTagId(event.target.value); setPage(1) }}><option value="">全部</option>{tags.map(tag => <option key={tag.id} value={tag.id}>{tag.name}</option>)}</select></label>}
       {experiment && <><label>状态<select value={status} onChange={event => { setStatus(event.target.value); setPage(1) }}><option value="">全部</option><option value="draft">草稿</option><option value="in_progress">进行中</option><option value="completed">已完成</option><option value="cancelled">已取消</option></select></label><label>起始日期<input type="date" value={dateFrom} onChange={event => { setDateFrom(event.target.value); setPage(1) }} /></label><label>结束日期<input type="date" value={dateTo} onChange={event => { setDateTo(event.target.value); setPage(1) }} /></label></>}
       <label>排序<select value={effectiveSort} onChange={event => { setSort(event.target.value); setPage(1) }}>{experiment ? <><option value="date_desc">日期从近到远</option><option value="date_asc">日期从远到近</option></> : <><option value="created_desc">最新创建</option><option value="name_asc">名称排序</option></>}</select></label>
     </form>
+    {!experiment && multi && <form className="filter-bar bulk-tag-bar" onSubmit={event => void bulkTag(event)}><span>已选 {Object.keys(selected).length} 个</span><label>标签名称<input required maxLength={50} value={bulkName} disabled={bulkBusy} onChange={event => setBulkName(event.target.value)} /></label><Button type="submit" disabled={bulkBusy || !Object.keys(selected).length || !bulkName.trim()}>{bulkBusy ? "保存中…" : "创建并添加标签"}</Button></form>}
+    {bulkNotice && <p role="status">{bulkNotice}</p>}
     {error && <Notice text={error} />}
     {!data && !error && <p className="loading-state">正在载入记录…</p>}
-    {data && (data.items.length ? <><div className="table-scroll"><table><thead><tr><th>{experiment ? "编号" : "CAS 编号"}</th><th>{experiment ? "标题" : "名称"}</th><th>{experiment ? "日期" : "分子式"}</th><th>{experiment ? "状态" : "分子量 (g/mol)"}</th>{!experiment && <th>代号</th>}{!experiment && <th>标签</th>}</tr></thead><tbody>{data.items.map(item => <tr key={item.id}><td className="code-cell"><Link to={`/${kind}/${item.id}`}>{experiment ? (item as Experiment).experiment_code : (item as Compound).cas_number || "CAS 待确认"}</Link></td><td><Link to={`/${kind}/${item.id}`}>{experiment ? (item as Experiment).title : (item as Compound).name || "系统名称待补充"}</Link></td><td>{experiment ? (item as Experiment).date : (item as Compound).molecular_formula || "—"}</td><td>{experiment ? statusLabel((item as Experiment).status) : formatMass((item as Compound).molecular_weight, 2) || "—"}</td>{!experiment && <td>{(item as Compound).codename || "—"}</td>}{!experiment && <td>{item.tags.map(tag => tag.name).join("、") || "—"}</td>}</tr>)}</tbody></table></div><PageNav page={page} total={data.total} size={25} onPage={setPage} /></> : <div className="blank-card"><h2>{search ? "没有匹配的记录" : "这里还没有记录"}</h2><p>可以调整搜索条件，或创建第一条{experiment ? "实验" : "化合物"}。</p>{experiment ? <Button asChild><Link to="/experiments/new">新建记录</Link></Button> : <Button asChild><Link to="/compounds/import">从结构新建</Link></Button>}</div>)}
+    {data && (data.items.length ? <><div className="table-scroll"><table><thead><tr>{!experiment && multi && <th className="selection-cell"><input type="checkbox" aria-label="全选本页" disabled={bulkBusy} checked={data.items.length > 0 && data.items.every(item => item.id in selected)} ref={node => { if (node) node.indeterminate = data.items.some(item => item.id in selected) && !data.items.every(item => item.id in selected) }} onChange={event => setSelected(event.target.checked ? Object.fromEntries(data.items.map(item => [item.id, item.version])) : {})} /></th>}<th>{experiment ? "编号" : "CAS 编号"}</th><th>{experiment ? "标题" : "名称"}</th><th>{experiment ? "日期" : "分子式"}</th><th>{experiment ? "状态" : "分子量 (g/mol)"}</th>{!experiment && <th>代号</th>}{!experiment && <th>标签</th>}</tr></thead><tbody>{data.items.map(item => <tr key={item.id}>{!experiment && multi && <td className="selection-cell"><input type="checkbox" aria-label={`选择 ${(item as Compound).codename || (item as Compound).name || (item as Compound).cas_number || item.id}`} disabled={bulkBusy} checked={item.id in selected} onChange={event => setSelected(current => { const next = { ...current }; if (event.target.checked) next[item.id] = item.version; else delete next[item.id]; return next })} /></td>}<td className="code-cell"><Link to={`/${kind}/${item.id}`}>{experiment ? (item as Experiment).experiment_code : (item as Compound).cas_number || "CAS 待确认"}</Link></td><td><Link to={`/${kind}/${item.id}`}>{experiment ? (item as Experiment).title : (item as Compound).name || "系统名称待补充"}</Link></td><td>{experiment ? (item as Experiment).date : (item as Compound).molecular_formula || "—"}</td><td>{experiment ? statusLabel((item as Experiment).status) : formatMass((item as Compound).molecular_weight, 2) || "—"}</td>{!experiment && <td>{(item as Compound).codename || "—"}</td>}{!experiment && <td>{item.tags.map(tag => tag.name).join("、") || "—"}</td>}</tr>)}</tbody></table></div><PageNav page={page} total={data.total} size={25} onPage={next => { if (!bulkBusy) setPage(next) }} /></> : <div className="blank-card"><h2>{search ? "没有匹配的记录" : "这里还没有记录"}</h2><p>可以调整搜索条件，或创建第一条{experiment ? "实验" : "化合物"}。</p>{experiment ? <Button asChild><Link to="/experiments/new">新建记录</Link></Button> : <Button asChild><Link to="/compounds/import">从结构新建</Link></Button>}</div>)}
     {copyOpen && <ExperimentCopyDialog onClose={() => setCopyOpen(false)} />}
     {createOpen && <CompoundCreateDialog onClose={() => setCreateOpen(false)} />}
   </main>

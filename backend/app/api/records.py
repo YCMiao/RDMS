@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
 from app.api.records_schema import (
+    CompoundBulkTag,
+    CompoundBulkTagOut,
     CompoundFields,
     CompoundOut,
     CompoundPatch,
@@ -155,6 +157,11 @@ def compounds(
 @router.post("/compounds", response_model=CompoundOut, status_code=201)
 def create_compound(payload: CompoundFields, db: Session = DB) -> dict[str, object]:
     return records.create_record(db, Compound, payload)
+
+
+@router.post("/compounds/bulk-tag", response_model=CompoundBulkTagOut)
+def bulk_tag_compounds(payload: CompoundBulkTag, db: Session = DB) -> dict[str, object]:
+    return records.bulk_tag_compounds(db, payload)
 
 
 @router.get("/compounds/{record_id}", response_model=CompoundOut)

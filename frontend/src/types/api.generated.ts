@@ -162,6 +162,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/compounds/bulk-tag": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk Tag Compounds */
+        post: operations["bulk_tag_compounds_api_compounds_bulk_tag_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/compounds/{record_id}": {
         parameters: {
             query?: never;
@@ -837,6 +854,19 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
+        /** CompoundBulkTag */
+        CompoundBulkTag: {
+            /** Name */
+            name: string;
+            /** Compounds */
+            compounds: components["schemas"]["CompoundSelection"][];
+        };
+        /** CompoundBulkTagOut */
+        CompoundBulkTagOut: {
+            tag: components["schemas"]["TagOut"];
+            /** Selected Count */
+            selected_count: number;
+        };
         /** CompoundFields */
         CompoundFields: {
             /** Name */
@@ -945,6 +975,16 @@ export interface components {
             source: string;
             /** Source Url */
             source_url?: string | null;
+        };
+        /** CompoundSelection */
+        CompoundSelection: {
+            /** Expected Version */
+            expected_version: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
         };
         /** DashboardOut */
         DashboardOut: {
@@ -2259,6 +2299,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CompoundOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_tag_compounds_api_compounds_bulk_tag_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompoundBulkTag"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompoundBulkTagOut"];
                 };
             };
             /** @description Validation Error */

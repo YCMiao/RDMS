@@ -41,6 +41,26 @@ class TagOut(BaseModel):
     version: int
 
 
+class CompoundSelection(VersionInput):
+    id: UUID
+
+
+class CompoundBulkTag(TagCreate):
+    compounds: list[CompoundSelection] = Field(min_length=1, max_length=100)
+
+    @field_validator("compounds")
+    @classmethod
+    def unique_compounds(cls, value: list[CompoundSelection]) -> list[CompoundSelection]:
+        if len({item.id for item in value}) != len(value):
+            raise ValueError("化合物不能重复选择")
+        return value
+
+
+class CompoundBulkTagOut(BaseModel):
+    tag: TagOut
+    selected_count: int
+
+
 class ExperimentFields(WriteModel):
     title: str = Field(min_length=1, max_length=300)
     date: Date

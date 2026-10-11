@@ -623,3 +623,32 @@ test("基础记录位于反应上方且双方各自保存并保留未保存输�
   await basic.getByText("备注", { exact: true }).click()
   await expect(basic.getByLabel("实验备注")).toHaveValue("统一备注内容")
 })
+
+test("化合物多选批量创建标签并保留旧标签", async ({ page, request }) => {
+  const suffix = Date.now().toString()
+  const oldTag = await (await request.post("/api/tags", { data: { name: `原标签${suffix}` } })).json()
+  const names = [`多选甲${suffix}`, `多选乙${suffix}`]
+  for (const name of names) await request.post("/api/compounds", { data: { name, tag_ids: [oldTag.id] } })
+  await page.goto("/compounds")
+  await page.getByRole("textbox", { name: "关键词" }).fill("多选")
+  await page.getByRole("button", { name: "搜索", exact: true }).last().click()
+  await expect(page.getByRole("link", { name: names[0], exact: true })).toBeVisible()
+  await page.getByRole("button", { name: "多选", exact: true }).click()
+  await expect(page.getByRole("button", { name: "创建并添加标签" })).toBeDisabled()
+  await page.getByRole("checkbox", { name: "全选本页" }).check()
+  await page.getByRole("checkbox", { name: `选择 ${names[1]}`, exact: true }).uncheck()
+  await expect(page.getByText("已选 1 个", { exact: true })).toBeVisible()
+  await page.getByRole("checkbox", { name: `选择 ${names[1]}`, exact: true }).check()
+  const name = `批量标签${suffix}`
+  await page.getByRole("textbox", { name: "标签名称", exact: true }).fill(name)
+  await page.screenshot({ path: "test-results/compound-multi-select.png", fullPage: true })
+  await page.getByRole("button", { name: "创建并添加标签" }).click()
+  await expect(page.getByRole("status")).toHaveText("已为 2 个化合物添加标签")
+  for (const compound of names) {
+    const row = page.getByRole("row").filter({ has: page.getByRole("link", { name: compound, exact: true }) })
+    await expect(row).toContainText(oldTag.name)
+    await expect(row).toContainText(name)
+  }
+  await expect(page.getByRole("checkbox")).toHaveCount(0)
+  await expect(page.getByRole("combobox", { name: "标签", exact: true }).getByRole("option", { name, exact: true })).toHaveCount(1)
+})
