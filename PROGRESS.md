@@ -1,5 +1,12 @@
 # 执行进度
 
+## 撤销 K 温度更新（2026-10-11）
+
+- 按用户要求撤销 30b3749，回到 5c146b8 的功能（回滚提交 10594bb）。backend/frontend 已重新构建部署；真实实验 efa7b01a-bce6-4181-a8ab-33a92c524458 的反应列表接口恢复成功，返回共 2 个反应，第一页为原第一步。
+- 故障日志确认新版后端查询 reaction.temperature_k，但真实数据库仍为 f6c9e1a403db 且没有该列。上次只构建 backend/frontend，运行的 migration 镜像未更新，实际没有执行新增字段迁移；就绪接口不足以证明业务接口正常。此前 K 进度中关于真实迁移完成的报告不成立，原反应快照相同是因为真实库未迁移。
+- 真实库保持原结构，无降级、备份覆盖或用户数据删除。以后涉及迁移必须构建 migration 镜像，核对实际 Alembic 版本与业务接口后再报告完成。回滚部署与业务接口验证记录在 /tmp/rdms-k-rollback-deploy.log、/tmp/rdms-k-rollback-reactions.json，故障日志 /tmp/rdms-k-failure.log。
+- 回滚验证：真实实验两页反应和摘要均返回成功；scripts/check.sh all 后端 49 项通过，前端下载失败后缓存重试 lint/类型/31 项/构建通过，隔离浏览器 16 项通过。日志 /tmp/rdms-k-rollback-check.log、/tmp/rdms-k-rollback-frontend.log、/tmp/rdms-k-rollback-e2e.log；隔离容器与网络清理完成。
+
 ## 温度时间组合输入（2026-10-11）
 
 - 条件与处理中的温度和时间各合并为一个组合框，同排显示左侧输入、右侧单位/描述选择。°C/h/min 使用数字输入，时间非负且保留小数精度；描述模式使用文本输入。原有数据字段、模式切换时的未保存值及独立保存逻辑保留，无数据库迁移或真实数据改写。
