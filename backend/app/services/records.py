@@ -83,6 +83,7 @@ def output(session: Session, record: Experiment | Compound) -> dict[str, Any]:
             "title",
             "date",
             "objective",
+            "notes",
             "procedure",
             "observation",
             "result",

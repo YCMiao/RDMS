@@ -71,6 +71,7 @@ class Experiment(Versioned, Base):
     title: Mapped[str] = mapped_column(String(300))
     date: Mapped[date] = mapped_column(Date)
     objective: Mapped[str | None] = mapped_column(Text)
+    notes: Mapped[str | None] = mapped_column(Text)
     procedure: Mapped[str | None] = mapped_column(Text)
     observation: Mapped[str | None] = mapped_column(Text)
     result: Mapped[str | None] = mapped_column(Text)

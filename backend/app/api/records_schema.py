@@ -45,6 +45,7 @@ class ExperimentFields(WriteModel):
     title: str = Field(min_length=1, max_length=300)
     date: Date
     objective: str | None = Field(default=None, max_length=100000)
+    notes: str | None = Field(default=None, max_length=500000)
     procedure: str | None = Field(default=None, max_length=100000)
     observation: str | None = Field(default=None, max_length=100000)
     result: str | None = Field(default=None, max_length=100000)
@@ -60,7 +61,7 @@ class ExperimentFields(WriteModel):
             raise ValueError("标题不能为空")
         return value
 
-    @field_validator("objective", "procedure", "observation", "result", "conclusion")
+    @field_validator("objective", "notes", "procedure", "observation", "result", "conclusion")
     @classmethod
     def clean_text(cls, value: str | None) -> str | None:
         return value.strip() if value is not None else None
@@ -80,6 +81,7 @@ class ExperimentPatch(VersionInput):
     title: str | None = Field(default=None, min_length=1, max_length=300)
     date: Date | None = None
     objective: str | None = Field(default=None, max_length=100000)
+    notes: str | None = Field(default=None, max_length=500000)
     procedure: str | None = Field(default=None, max_length=100000)
     observation: str | None = Field(default=None, max_length=100000)
     result: str | None = Field(default=None, max_length=100000)
@@ -206,6 +208,7 @@ class ExperimentOut(RecordBase):
     title: str
     date: Date
     objective: str | None
+    notes: str | None
     procedure: str | None
     observation: str | None
     result: str | None

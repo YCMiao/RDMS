@@ -993,6 +993,8 @@ export interface components {
             date: string;
             /** Objective */
             objective?: string | null;
+            /** Notes */
+            notes?: string | null;
             /** Procedure */
             procedure?: string | null;
             /** Observation */
@@ -1042,6 +1044,8 @@ export interface components {
             date: string;
             /** Objective */
             objective: string | null;
+            /** Notes */
+            notes: string | null;
             /** Procedure */
             procedure: string | null;
             /** Observation */
@@ -1063,6 +1067,8 @@ export interface components {
             date?: string | null;
             /** Objective */
             objective?: string | null;
+            /** Notes */
+            notes?: string | null;
             /** Procedure */
             procedure?: string | null;
             /** Observation */
@@ -1662,6 +1668,8 @@ export interface components {
             date: string;
             /** Objective */
             objective: string | null;
+            /** Notes */
+            notes: string | null;
             /** Procedure */
             procedure: string | null;
             /** Observation */

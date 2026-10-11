@@ -164,14 +164,18 @@ def markdown(summary: SummaryOut) -> str:
         f"生成时间：{summary.generated_at.isoformat()}",
         f"内容版本：{summary.source_revision}",
     ]
-    for label, field in (
-        ("目的", experiment.objective),
-        ("操作", experiment.procedure),
-        ("观察", experiment.observation),
-        ("结果", experiment.result),
-        ("结论", experiment.conclusion),
-    ):
-        lines.extend(["", f"## {label}", value(field)])
+    if experiment.notes is not None:
+        for label, field in (("目的", experiment.objective), ("备注", experiment.notes)):
+            lines.extend(["", f"## {label}", value(field)])
+    else:
+        for label, field in (
+            ("目的", experiment.objective),
+            ("操作", experiment.procedure),
+            ("观察", experiment.observation),
+            ("结果", experiment.result),
+            ("结论", experiment.conclusion),
+        ):
+            lines.extend(["", f"## {label}", value(field)])
     lines.extend(["", "## 反应与组分"])
     if not summary.reactions:
         lines.append("未记录")
