@@ -208,34 +208,3 @@ def test_condition_migration_preserves_legacy_values_and_guards_downgrade() -> N
         assert connection.execute(text("SELECT * FROM reaction ORDER BY id")).all() == before
         transaction.rollback()
     engine.dispose()
-
-
-def test_kelvin_persists_copies_and_switches(client: TestClient) -> None:
-    exp = client.post("/api/experiments", json={"title": "kelvin", "date": "2026-10-11"}).json()
-    path = f"/api/experiments/{exp['id']}/reactions"
-    response = client.post(
-        path, json={"reaction_name": "K reaction", "temperature_k": "298.12345678"}
-    )
-    assert response.status_code == 201
-    row = response.json()
-    url = f"/api/reactions/{row['id']}"
-    assert client.get(url).json()["temperature_k"] == "298.12345678"
-    assert "298.12 K" in client.get(f"/api/experiments/{exp['id']}/summary?format=markdown").text
-    copied = client.post(
-        f"/api/experiments/{exp['id']}/copy",
-        json={"expected_version": exp["version"], "title": "K copy", "date": "2026-10-11"},
-    )
-    assert copied.status_code == 201
-    assert (
-        client.get(f"/api/experiments/{copied.json()['id']}/reactions").json()["items"][0][
-            "temperature_k"
-        ]
-        == "298.12345678"
-    )
-    for data in ({"temperature_k": "-1"}, {"temperature_k": "298", "temperature_c": "25"}):
-        assert (
-            client.patch(url, json={"expected_version": row["version"], **data}).status_code == 422
-        )
-    result = client.patch(url, json={"expected_version": row["version"], "temperature_c": "25"})
-    assert result.status_code == 200
-    assert result.json()["temperature_k"] is None

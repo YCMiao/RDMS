@@ -41,7 +41,6 @@ def out(row: Sample | Reaction | ReactionComponent) -> dict[str, Any]:
             "reaction_name",
             "sort_order",
             "temperature_c",
-            "temperature_k",
             "temperature_description",
             "reaction_time_hours",
             "reaction_time_minutes",
@@ -297,7 +296,7 @@ def patch_reaction(session: Session, reaction_id: UUID, payload: ReactionPatch) 
     changes = payload.model_dump(exclude_unset=True, exclude={"expected_version"})
     # A non-null condition selects its representation, including legacy hours/Celsius writes.
     for group in (
-        ("temperature_c", "temperature_k", "temperature_description"),
+        ("temperature_c", "temperature_description"),
         ("reaction_time_hours", "reaction_time_minutes", "reaction_time_description"),
     ):
         selected = next((key for key in group if changes.get(key) is not None), None)
