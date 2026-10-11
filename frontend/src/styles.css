@@ -393,3 +393,10 @@ td a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .solvent-table small { display: block; margin-top: 5px; color: var(--muted); }
 .solvent-table td:first-child { width: 45%; overflow-wrap: anywhere; }
 .solvent-table :is(th, td):nth-child(4) { text-align: right; font-variant-numeric: tabular-nums; }
+
+.experiment-metadata > .form-grid { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 760px) {
+  .experiment-metadata > .form-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.experiment-metadata .field-label { color: var(--ink-soft); }
