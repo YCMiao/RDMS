@@ -1,5 +1,23 @@
 # 执行进度
 
+## 气氛预设菜单（2026-10-11）
+
+- 气氛改为下拉菜单，提供 Air、Nitrogen、Argon、其他；空记录保持未选择，选择其他显示自定义输入。已有非预设文字原样载入其他；切换预设再回其他保留未保存文字。保留反应名称/气氛 4:1 同排及独立保存。
+- 已执行 scripts/check.sh all：后端 50 项通过，前端依赖下载中断。使用同版本缓存构建镜像补验，最终前端 lint/类型/31 项/构建通过；新建空隔离数据库，缓存 Playwright 依赖跑完整浏览器 16 项通过，覆盖预设保存与自定义输入切换、保存重访。日志 /tmp/rdms-atmosphere-presets-check.log、/tmp/rdms-atmosphere-presets-frontend-final.log、/tmp/rdms-atmosphere-presets-e2e-final.log。隔离容器与网络已清理。
+- 本机 frontend 已重建更新，无数据库迁移或真实数据写入。部署日志 /tmp/rdms-atmosphere-presets-deploy-final.log。
+
+## 反应名称与气氛同排（2026-10-11）
+
+- 条件与处理首行改为反应名称在左、气氛在右，宽度 4:1；移除原气氛单独一行，温度与时间紧接下一行。760px 以下改为单列，保存逻辑及数据字段不变。
+- scripts/check.sh all 退出 0：后端 50 项、前端 lint/类型/31 项及构建、隔离浏览器 16 项通过；截图 frontend/test-results/reaction-condition-modes.png 已目视核对首行比例和输入框对齐。日志 /tmp/rdms-atmosphere-check.log。测试隔离容器与网络已清理。
+- 本机 frontend 已重建更新，日志 /tmp/rdms-atmosphere-build.log、/tmp/rdms-atmosphere-deploy.log；无数据库迁移或真实数据写入。
+
+## K 温度选项（2026-10-11，重新实施）
+
+- 温度增加 K，数字输入 min=0；后端及数据库同时约束非负，摄氏度继续允许负值。K 按原精度独立保存，总览、摘要、实验复制和重访保留单位；不换算或改写旧温度。
+- 已构建 migration/backend/frontend，执行真实 Alembic 迁移并核对版本 a7d0f2b504ec。迁移前备份 backups/pre-k-20261011-v2 已 verify；所有旧 reaction 字段逐项比对相同，真实上传完整哈希检查 consistent=true。当前实验及此前故障实验的反应列表、当前实验摘要均 HTTP 200。
+- scripts/check.sh all 退出 0：后端 50 项、前端 lint/类型/31 项测试及构建、隔离浏览器 16 项全部通过。浏览器覆盖负 K 拒绝、0 K、小数保存重访和总览显示；隔离容器及网络已清理。日志 /tmp/rdms-k-check-v2.log；备份、迁移、数据验证日志分别为 /tmp/rdms-k-backup-v2.log、/tmp/rdms-k-migrate-v2.log、/tmp/rdms-k-data-v2.log。测试只使用独立数据库和临时上传目录。
+
 ## 撤销 K 温度更新（2026-10-11）
 
 - 按用户要求撤销 30b3749，回到 5c146b8 的功能（回滚提交 10594bb）。backend/frontend 已重新构建部署；真实实验 efa7b01a-bce6-4181-a8ab-33a92c524458 的反应列表接口恢复成功，返回共 2 个反应，第一页为原第一步。

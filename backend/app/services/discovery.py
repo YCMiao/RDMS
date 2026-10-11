@@ -184,6 +184,8 @@ def markdown(summary: SummaryOut) -> str:
         temperature = (
             reaction.temperature_description
             if reaction.temperature_description is not None
+            else f"{decimal_value(reaction.temperature_k)} K"
+            if reaction.temperature_k is not None
             else f"{decimal_value(reaction.temperature_c)} °C"
         )
         duration = (

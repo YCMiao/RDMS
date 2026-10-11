@@ -404,3 +404,10 @@ td a:hover { text-decoration: underline; text-underline-offset: 3px; }
 }
 
 .experiment-metadata .field-label { color: var(--ink-soft); }
+
+.reaction-name-atmosphere { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 1fr); gap: 24px; }
+@media (max-width: 760px) {
+  .reaction-name-atmosphere { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+}
+
+.atmosphere-control { display: grid; gap: 8px; align-content: start; min-width: 0; }
