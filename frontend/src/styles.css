@@ -344,7 +344,7 @@ td a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .reactant-editor fieldset { min-width: 0; padding: 0; border: 0; }
 .reactant-modes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
 .cas-search > label { max-width: 380px; }
-.cas-search p, .dosing-hint { color: var(--muted); font-size: 12px; line-height: 1.65; }
+.cas-search p { color: var(--muted); font-size: 12px; line-height: 1.65; }
 .cas-candidates { display: grid; gap: 8px; }
 .cas-candidates button { height: auto; white-space: normal; justify-content: flex-start; text-align: left; }
 .reagent-preview { margin: 18px 0; padding: 16px 18px; background: var(--copper-soft); border-radius: 6px; overflow-wrap: anywhere; }
@@ -352,8 +352,8 @@ td a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .reagent-preview dl { display: flex; flex-wrap: wrap; gap: 20px 36px; margin: 12px 0 0; }
 .reagent-preview dt { font-size: 11px; color: var(--ink-soft); }
 .reagent-preview dd { margin: 4px 0 0; font-size: 13px; }
-.dosing-inputs { margin-top: 22px; grid-template-columns: repeat(5, minmax(0, 1fr)); }
-.dosing-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 16px 0 22px; }
+.dosing-inputs { margin: 22px 0 18px; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.reactant-dosing-inputs { grid-template-columns: minmax(0, 1fr) auto repeat(4, minmax(0, 1fr)); }
 @media (max-width: 700px) { .dosing-inputs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dosing-heading { align-items: flex-start; } }
 
 .reaction-overview { margin-top: 8px; }
@@ -369,8 +369,8 @@ td a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .condition-input input { flex: 1; min-width: 0; border-radius: 6px 0 0 6px; }
 .condition-input select { width: 100px; flex-shrink: 0; border-left: 0; border-radius: 0 6px 6px 0; }
 
-.limiting-choice { display: flex; align-items: center; gap: 8px; margin: 16px 0; }
-.limiting-choice input { width: auto; }
+.record-form .dosing-inputs .limiting-choice { display: flex; align-items: center; align-self: end; gap: 7px; min-height: 38px; }
+.record-form .dosing-inputs .limiting-choice input { width: 16px; height: 16px; min-height: 0; padding: 0; flex-shrink: 0; }
 .dosing-inputs > label { min-width: 0; align-content: start; }
 .dosing-inputs input, .dosing-inputs select { width: 100%; min-width: 0; }
 .record-form .dosing-inputs small { color: var(--muted); font-weight: 400; line-height: 1.5; }

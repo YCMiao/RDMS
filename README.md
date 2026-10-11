@@ -82,7 +82,7 @@ docker compose --profile test run --rm frontend-test npm run generate:api
 
 化合物统一以 CAS 号编号，名称采用系统命名；原名称保留为独立“代号”，可按名称、代号、CAS 或 SMILES 搜索。系统不再分配 CMP 编号。查不到可核实 CAS 的记录显示“CAS 待确认”。联网资料和现有记录核验结果见 [化合物身份规范](docs/compound-identity.md)。
 
-mg 与 mmol 可按 Mw 补全空缺的一项，不覆盖已填数值。同一反应优先按已勾选限制反应物的 mmol 确定 1 eq；没有限制反应物时沿用首次填写有效 eq 和 mmol 的比例。后续投料按该比例在离开 eq 或 mmol 输入框时自动换算；mL 不自动换算为 mmol，避免假定密度或溶液浓度。旧记录的 g、kg、µg 和 L、µL 在表内分别换算成 mg、mL，仅改变展示，不改写保存的数值或单位。
+“限制反应物”小勾选框与角色、eq、mmol、投料量、单位同排，勾选后固定 1 eq。同一反应优先按已勾选限制反应物的 mmol 确定 1 eq；没有限制反应物时沿用首次填写有效 eq 和 mmol 的比例。输入 eq 立即换算 mmol，再按 Mw 生成当前质量单位的投料量；直接修改 mmol 或质量也会同步相关数值，允许手动调整。首次没有基准时需填写一组 eq 与 mmol（或质量和 Mw）。体积始终手动填写，不从 mmol 推算，也不从体积推算 mmol。新建或编辑界面不再显示 Mw 补全按钮和换算说明。旧记录的 g、kg、µg 和 L、µL 在表内分别换算成 mg、mL，仅改变展示，不改写保存的数值或单位。
 
 交互参考与验证边界见 [投料表说明](docs/reactant-table.md)。
 
