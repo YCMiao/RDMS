@@ -58,7 +58,7 @@ export function RecordList({ kind }: { kind: Kind }) {
   }, [kind, search, page, effectiveSort, status, dateFrom, dateTo, tagId])
   const experiment = kind === "experiments"
   return <main className="records-page">
-    <div className="page-heading"><div><span className="eyebrow">RDMS / {experiment ? "Experiments" : "Compounds"}</span><h1>{experiment ? "实验记录" : "化合物"}</h1>{!experiment && <p>从结构建档，追踪 CAS、理化资料与实验来源。</p>}</div>{experiment ? <div className="heading-actions"><Button asChild><Link to="/experiments/new">新建实验</Link></Button><Button variant="outline" onClick={() => setCopyOpen(true)}>从现有实验复制</Button></div> : <div className="heading-actions"><Button asChild><Link to="/compounds/import">从结构新建</Link></Button><Button variant="outline" onClick={() => setCreateOpen(true)}>新建化合物</Button></div>}</div>
+    <div className="page-heading"><div><span className="eyebrow">RDMS / {experiment ? "Experiments" : "Compounds"}</span><h1>{experiment ? "实验记录" : "化合物"}</h1></div>{experiment ? <div className="heading-actions"><Button asChild><Link to="/experiments/new">新建实验</Link></Button><Button variant="outline" onClick={() => setCopyOpen(true)}>从现有实验复制</Button></div> : <div className="heading-actions"><Button asChild><Link to="/compounds/import">从结构新建</Link></Button><Button variant="outline" onClick={() => setCreateOpen(true)}>新建化合物</Button></div>}</div>
     <form className="filter-bar" onSubmit={event => { event.preventDefault(); setPage(1); setSearch(q) }}>
       <label>关键词<input value={q} onChange={event => setQ(event.target.value)} placeholder={experiment ? "标题或编号" : "名称、代号、CAS 或 SMILES"} /></label>
       <Button type="submit" variant="outline">搜索</Button>
