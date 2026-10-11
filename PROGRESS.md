@@ -1,5 +1,11 @@
 # 执行进度
 
+## 移除投料区重复手动新建入口（2026-10-11）
+
+- 反应物、产物、溶剂的本机选择区移除“从结构建档”右侧的“手动新建”链接，以已有“手动填写”模式完成建档；保留结构建档。共用选择器通过 showManualCreate 开关控制，没有手动填写模式的样品选择区维持原入口。
+- 缓存模式 `scripts/check.sh all` 退出 0（后端独立 PostgreSQL 63 项、前端 lint/类型/31 项/构建、隔离浏览器 20 项通过）；收窄移除范围后的最终前端另经 `scripts/check.sh frontend` 退出 0。日志 /tmp/rdms-remove-manual-link-check.log、/tmp/rdms-remove-manual-link-frontend.log。未新增低影响链接删除的重复测试，已有手动填写和本机选择流程完成回归。
+- 本机 frontend 已重建更新，线上资源确认反应物编辑传入隐藏入口开关，健康接口成功。无迁移、依赖下载或真实科研数据写入，隔离环境清理完成；部署日志 /tmp/rdms-remove-manual-link-deploy.log。
+
 ## 化合物列表按 CAS 新建（2026-10-11）
 
 - 在“从结构新建”左侧增加“根据CAS号新建”，打开共用居中弹窗。与实验新增反应物共用 CasCompoundSearch、CasCompoundPreview 和 casCompoundInput：CAS 格式/校验位检查，输入有效编号 500ms 后优先匹配本机，否则查询 PubChem；单候选自动选中、多候选明确选择，失败/警告支持重试，改号和关闭时忽略过时响应。

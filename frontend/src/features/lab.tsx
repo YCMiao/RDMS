@@ -23,7 +23,7 @@ function doseIn(row: Component, target: "mg" | "mL") {
   return row.amount !== null && factor ? formatDecimal(Number(row.amount) * factor) : "—"
 }
 
-export function CompoundPicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export function CompoundPicker({ value, onChange, showManualCreate = true }: { value: string; onChange: (value: string) => void; showManualCreate?: boolean }) {
   const [term, setTerm] = useState("")
   const [page, setPage] = useState(1)
   const [data, setData] = useState<Page<Compound> | null>(null)
@@ -31,7 +31,7 @@ export function CompoundPicker({ value, onChange }: { value: string; onChange: (
   const [selected, setSelected] = useState<Compound | null>(null)
   useEffect(() => { if (value) void request<Compound>(`/compounds/${value}`).then(setSelected).catch(() => setSelected(null)) }, [value])
   useEffect(() => { void request<Page<Compound>>(`/compounds?${query({ q: term, page, page_size: 20 })}`).then(setData).catch(reason => setError(errorText(reason))) }, [term, page])
-  return <div className="relation-picker"><label>查找化合物<input value={term} onChange={event => { setTerm(event.target.value); setPage(1) }} placeholder="名称、代号或 CAS" /></label><label>化合物<select value={value} onChange={event => onChange(event.target.value)}><option value="">{data ? "请选择" : "加载中…"}</option>{selected && !data?.items.some(item => item.id === selected.id) && <option value={selected.id}>{selected.cas_number} · {selected.name}</option>}{data?.items.map(item => <option key={item.id} value={item.id}>{item.cas_number} · {item.name}</option>)}</select></label>{data && data.total > 20 && <Button type="button" variant="outline" onClick={() => setPage(page + 1)} disabled={page * 20 >= data.total}>下一页</Button>}<Link className="text-link" to="/compounds/import">从结构建档</Link><Link className="text-link" to="/compounds/new">手动新建</Link>{error && <p role="alert">{error}</p>}</div>
+  return <div className="relation-picker"><label>查找化合物<input value={term} onChange={event => { setTerm(event.target.value); setPage(1) }} placeholder="名称、代号或 CAS" /></label><label>化合物<select value={value} onChange={event => onChange(event.target.value)}><option value="">{data ? "请选择" : "加载中…"}</option>{selected && !data?.items.some(item => item.id === selected.id) && <option value={selected.id}>{selected.cas_number} · {selected.name}</option>}{data?.items.map(item => <option key={item.id} value={item.id}>{item.cas_number} · {item.name}</option>)}</select></label>{data && data.total > 20 && <Button type="button" variant="outline" onClick={() => setPage(page + 1)} disabled={page * 20 >= data.total}>下一页</Button>}<Link className="text-link" to="/compounds/import">从结构建档</Link>{showManualCreate && <Link className="text-link" to="/compounds/new">手动新建</Link>}{error && <p role="alert">{error}</p>}</div>
 }
 
 export function SamplesPage() {
