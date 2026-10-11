@@ -173,13 +173,14 @@ td a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .relation-picker label { min-width: 220px; flex: 1; }
 .relation-picker + .page-nav { justify-content: flex-start; margin-bottom: 15px; }
 .action-cell { display: flex; flex-wrap: wrap; gap: 6px; }
-.record-dialog { width: min(760px, calc(100vw - 32px)); max-height: min(88vh, 900px); overflow: auto; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); color: var(--ink); padding: 22px; box-shadow: 0 30px 90px rgb(0 0 0 / 22%); }
+.record-dialog { position: fixed; inset: 0; margin: auto; width: min(760px, calc(100vw - 32px)); max-height: min(88vh, 900px); overflow: auto; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); color: var(--ink); padding: 22px; box-shadow: 0 30px 90px rgb(0 0 0 / 22%); }
 .record-dialog::backdrop { background: rgb(9 24 20 / 58%); }
 .dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; margin-bottom: 20px; }
 .dialog-heading .eyebrow { margin-bottom: 7px; }
 .dialog-heading h2 { margin-bottom: 5px; font: 500 31px Georgia, "Songti SC", serif; }
 .dialog-heading p { margin-bottom: 0; color: var(--muted); font-size: 13px; }
 .record-dialog .record-form { padding: 22px; }
+.record-dialog .form-grid > *, .record-dialog .picker-search input { min-width: 0; }
 
 .heading-actions { display: flex; flex-wrap: wrap; gap: 9px; }
 .compound-import-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 18px; }
@@ -374,7 +375,7 @@ td a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dosing-inputs input, .dosing-inputs select { width: 100%; min-width: 0; }
 .record-form .dosing-inputs small { color: var(--muted); font-weight: 400; line-height: 1.5; }
 
-.experiment-copy-dialog { margin: auto; width: min(600px, calc(100vw - 32px)); }
+.experiment-copy-dialog { width: min(600px, calc(100vw - 32px)); }
 .copy-source-picker { display: grid; gap: 16px; margin-bottom: 20px; }
 .copy-source-picker label { display: grid; gap: 8px; min-width: 0; font-size: 13px; font-weight: 600; }
 .copy-source-picker select { width: 100%; min-width: 0; }
@@ -425,7 +426,7 @@ td a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .notebook-card-footer { padding: 8px 14px; border-top: 1px solid var(--line); }
 .notebook-card-footer small { color: var(--ink-soft); }
 .notebook-card.archived .notebook-cover { border-left-color: var(--ink-soft); }
-.checkbox-label { display: flex; gap: 10px; align-items: center; }
-.checkbox-label input { width: auto; }
+.record-form .checkbox-label { display: flex; gap: 10px; align-items: center; }
+.record-form .checkbox-label input { width: 16px; height: 16px; min-height: 0; padding: 0; flex-shrink: 0; }
 .notebook-membership { display: flex; gap: 16px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
 @media (max-width: 600px) { .notebook-grid { grid-template-columns: minmax(0, 1fr); } }

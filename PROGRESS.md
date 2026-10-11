@@ -1,5 +1,11 @@
 # 执行进度
 
+## 弹窗统一居中（2026-10-11）
+
+- 排查全部原生 dialog：新建化合物、新建/编辑记录本、移入记录本、复制实验均共用 record-dialog，统一固定于视口并水平/垂直居中。保留窄屏两侧空间、最大高度和内部滚动，移除复制窗口的重复居中规则；修正化合物窗口窄屏表单横向溢出及记录本归档勾选框排版。
+- `RDMS_CHECK_CACHED_DEPS=1 scripts/check.sh all` 退出 0：后端独立 PostgreSQL 54 项、前端 lint/类型/31 项/构建、隔离浏览器 17 项通过。现有操作流程增加所有弹窗的实际位置/边界/横向溢出检查，化合物及编辑记录本另验 390×844 窄屏，长表单保存按钮可滚动到达。已核对截图 frontend/test-results/notebook-dialog-centered.png、notebook-dialog-centered-mobile.png、compound-dialog-centered-mobile.png；日志 /tmp/rdms-dialog-centering-check.log。
+- 本机 frontend 已重新构建更新；测试复用已有依赖缓存，仅使用独立数据库和临时文件，隔离环境已清理。无数据库迁移或真实科研记录写入。部署日志 /tmp/rdms-dialog-centering-deploy.log。
+
 ## 实验记录本与本内编号（2026-10-11）
 
 - 动工前将上一阶段已验证的 K 温度、紧凑布局和气氛菜单保存为 Git 基线 `78b99ea66c71dace6cb08a439d40c86cadf849fa`，当前任务可与该提交比较。

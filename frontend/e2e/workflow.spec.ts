@@ -1,5 +1,18 @@
 import { createHash } from "node:crypto"
 import { expect, test } from "@playwright/test"
+import type { Locator, Page } from "@playwright/test"
+
+async function expectCenteredDialog(page: Page, dialog: Locator) {
+  await expect(dialog).toBeVisible()
+  const viewport = page.viewportSize()!
+  const bounds = (await dialog.boundingBox())!
+  expect(Math.abs(bounds.x + bounds.width / 2 - viewport.width / 2)).toBeLessThan(2)
+  expect(Math.abs(bounds.y + bounds.height / 2 - viewport.height / 2)).toBeLessThan(2)
+  expect(bounds.x).toBeGreaterThanOrEqual(15)
+  expect(bounds.y).toBeGreaterThanOrEqual(0)
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height)
+  expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBeTruthy()
+}
 
 test("实验与化合物可以不经总览直接双向切换", async ({ page }) => {
   for (const first of ["实验", "化合物"] as const) {
@@ -145,6 +158,14 @@ test("科研记录从创建、文件字节到删除恢复的真实闭环", async
   await page.goto("/compounds")
   await page.getByRole("button", { name: "新建化合物" }).click()
   const dialog = page.getByRole("dialog", { name: "新建化合物" })
+  await expectCenteredDialog(page, dialog)
+  const compoundViewport = page.viewportSize()!
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expectCenteredDialog(page, dialog)
+  await dialog.getByRole("button", { name: "创建化合物" }).scrollIntoViewIfNeeded()
+  await expect(dialog.getByRole("button", { name: "创建化合物" })).toBeVisible()
+  await page.screenshot({ path: "test-results/compound-dialog-centered-mobile.png" })
+  await page.setViewportSize(compoundViewport)
   await dialog.getByRole("textbox", { name: /名称/ }).fill(compoundName)
   await dialog.getByRole("textbox", { name: "SMILES" }).fill("c1ccccc1-c2ccccc2")
   await dialog.getByRole("button", { name: "创建化合物" }).click()
@@ -328,6 +349,7 @@ test("从现有实验复制为草稿，反应和投料独立保存", async ({ pa
   await page.goto("/experiments?view=all")
   await page.getByRole("button", { name: "从现有实验复制", exact: true }).click()
   const dialog = page.getByRole("dialog", { name: "从现有实验复制" })
+  await expectCenteredDialog(page, dialog)
   await dialog.getByLabel("查找原实验").fill("没有匹配项-unique")
   await expect(dialog.getByRole("option", { name: "没有匹配的实验", exact: true })).toBeAttached()
   await dialog.getByLabel("查找原实验").fill(source.experiment_code)
@@ -343,6 +365,7 @@ test("从现有实验复制为草稿，反应和投料独立保存", async ({ pa
   await dialog.screenshot({ path: "test-results/experiment-copy-dialog.png" })
   await page.setViewportSize({ width: 390, height: 844 })
   const narrow = await dialog.boundingBox()
+  await expectCenteredDialog(page, dialog)
   expect(narrow!.x).toBeGreaterThanOrEqual(0)
   expect(narrow!.x + narrow!.width).toBeLessThanOrEqual(390)
   await expect(dialog.getByRole("combobox", { name: "选择原实验", exact: true })).toBeVisible()
@@ -748,6 +771,7 @@ test("记录本卡片、新建复制、编号预览、移入与恢复闭环", as
   await expect(page.getByRole("heading", { name: "实验记录本", exact: true })).toBeVisible()
   await page.getByRole("button", { name: "新建记录本", exact: true }).click()
   const create = page.getByRole("dialog", { name: "新建记录本", exact: true })
+  await expectCenteredDialog(page, create)
   await create.getByLabel("记录本名称", { exact: true }).fill(`偶联研究 ${suffix}`)
   await create.getByLabel("说明", { exact: true }).fill("同类实验")
   await create.getByRole("button", { name: "保存记录本", exact: true }).click()
@@ -769,6 +793,7 @@ test("记录本卡片、新建复制、编号预览、移入与恢复闭环", as
   const transfer = page.getByRole("dialog", { name: "移入记录本", exact: true })
   await transfer.getByLabel("记录本", { exact: true }).selectOption(target.id)
   await expect(transfer).toContainText(`${target.code}-0001`)
+  await expectCenteredDialog(page, transfer)
   await transfer.getByRole("button", { name: "确认移入", exact: true }).click()
   await expect(transfer).toBeHidden()
   await expect(page.getByText(`EXPERIMENT / ${target.code}-0001`, { exact: true })).toBeVisible()
@@ -801,6 +826,13 @@ test("记录本卡片、新建复制、编号预览、移入与恢复闭环", as
   const card = page.getByRole("article").filter({ has: page.getByRole("heading", { name: `偶联研究 ${suffix}`, exact: true }) })
   await card.getByRole("button", { name: "编辑", exact: true }).click()
   const edit = page.getByRole("dialog", { name: "编辑记录本", exact: true })
+  await expectCenteredDialog(page, edit)
+  await page.screenshot({ path: "test-results/notebook-dialog-centered.png" })
+  const notebookViewport = page.viewportSize()!
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expectCenteredDialog(page, edit)
+  await page.screenshot({ path: "test-results/notebook-dialog-centered-mobile.png" })
+  await page.setViewportSize(notebookViewport)
   await edit.getByRole("checkbox", { name: /归档/ }).check()
   await edit.getByRole("button", { name: "保存记录本", exact: true }).click()
   await expect(card).toBeHidden()
