@@ -377,5 +377,3 @@ td a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .experiment-copy-dialog .record-form { padding: 0; border: 0; background: transparent; }
 .copy-source-picker input, .copy-source-picker select { min-height: 40px; max-width: 100%; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface-raised); color: var(--ink); padding: 8px 10px; font: inherit; }
 .copy-source-picker input:focus-visible, .copy-source-picker select:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
-
-.experiment-section-divider { margin: 36px 0 28px; border: 0; border-top: 1px solid var(--line); }
