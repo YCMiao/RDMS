@@ -69,6 +69,7 @@ describe("experiment editor", () => {
       return new Response(JSON.stringify({ items: [], total: 0, page: 1, page_size: 25 }))
     })
     render(<StrictMode><MemoryRouter initialEntries={["/compounds"]}><Routes><Route path="/compounds" element={<RecordList kind="compounds" />} /><Route path="/compounds/:id" element={<RecordEditor kind="compounds" />} /></Routes></MemoryRouter></StrictMode>)
+    await userEvent.click(screen.getByText("更多", { exact: true }))
     await userEvent.click(screen.getByRole("button", { name: "新建化合物" }))
     expect(screen.getByRole("dialog", { name: "新建化合物" })).toBeInTheDocument()
     await userEvent.type(screen.getByRole("textbox", { name: /名称/ }), "biphenyl")

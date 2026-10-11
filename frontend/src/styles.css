@@ -452,3 +452,32 @@ td a:hover { text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 620px) {
   .dashboard .intro-grid h1 { font-size: 42px; }
 }
+
+/* Shared spacing for record workflows; dashboard typography stays independent. */
+.records-page .relation-section > h2 { margin-bottom: 16px; }
+.records-page .relation-section > p { margin-block: 12px; }
+.records-page .relation-section > .text-link { display: inline-block; margin-top: 8px; }
+.form-grid { align-items: start; }
+.form-grid label { align-content: start; }
+.form-actions { align-items: center; flex-wrap: wrap; row-gap: 12px; }
+.form-actions > p { margin: 0; font-size: 13px; }
+.form-actions .destructive-action { margin-left: auto; }
+.save-success, .form-actions > [role="status"] { color: var(--copper); }
+.save-error { color: var(--ink); border-left: 3px solid var(--amber); padding-left: 10px; }
+.page-nav { flex-wrap: wrap; gap: 12px; margin-block: 20px; padding-block: 4px; }
+.page-nav > span { margin-right: auto; }
+.page-nav + .reaction-entry { margin-top: 0; }
+.inline-disclosure { margin-block: 16px 24px; }
+.inline-disclosure > summary, .more-actions > summary { width: fit-content; cursor: pointer; border: 1px solid var(--line-strong); border-radius: 6px; padding: 9px 14px; min-height: 42px; color: var(--ink); font-weight: 600; font-size: 14px; }
+.inline-disclosure > summary:hover, .more-actions > summary:hover { background: var(--surface-raised); }
+summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.inline-disclosure[open] > summary { margin-bottom: 16px; }
+.inline-disclosure > .relation-picker { margin: 0; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+.more-actions { position: relative; }
+.more-actions > div { position: absolute; z-index: 10; top: calc(100% + 8px); right: 0; width: max-content; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-raised); box-shadow: 0 6px 20px rgb(0 0 0 / 12%); }
+.table-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.table-tags > span { max-width: 100%; padding: 3px 7px; border-radius: 4px; background: var(--copper-soft); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+@media (max-width: 620px) {
+  .page-nav > span { flex-basis: 100%; }
+  .more-actions > div { right: auto; left: 0; }
+}

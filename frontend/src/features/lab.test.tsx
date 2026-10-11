@@ -68,6 +68,7 @@ describe("sample and reaction workflows", () => {
       return respond(empty)
     })
     render(<MemoryRouter><ExperimentLab experimentId={experiment.id} /></MemoryRouter>)
+    await userEvent.click(screen.getByText("添加反应", { exact: true }))
     const name = screen.getByRole("textbox", { name: "新反应名称" })
     await userEvent.type(name, "反应 A")
     await userEvent.click(screen.getByRole("button", { name: "创建反应" }))

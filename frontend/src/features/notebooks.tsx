@@ -1,3 +1,4 @@
+import { Pagination } from "../components/pagination"
 import { BookOpen, Plus } from "lucide-react"
 import { useEffect, useRef, useState, type FormEvent } from "react"
 import { Link, useSearchParams } from "react-router-dom"
@@ -45,7 +46,7 @@ function NotebookCards() {
     <form className="filter-bar" onSubmit={event => { event.preventDefault(); setQ(search.trim()); setPage(1) }}><label>查找记录本<input value={search} onChange={event => setSearch(event.target.value)} /></label><Button type="submit" variant="outline">搜索</Button><label>显示<select aria-label="显示" value={filter} onChange={event => { setFilter(event.target.value); setPage(1) }}><option value="active">使用中</option><option value="archived">已归档</option><option value="all">全部</option></select></label></form>
     {error && <p role="alert">{error}</p>}{!data && !error && <p>正在载入记录本…</p>}
     <div className="notebook-grid">{data?.items.map(row => <article className={`notebook-card${row.archived ? " archived" : ""}`} key={row.id}><Link className="notebook-cover" to={`/experiments?notebook=${row.id}`}><div className="notebook-cover-top"><BookOpen size={22} strokeWidth={1.5} /><span>{row.code}</span></div><h2>{row.name}</h2>{row.description && <p>{row.description}</p>}<div className="notebook-cover-bottom"><span>{row.experiment_count} 个实验</span>{row.archived && <span>已归档</span>}</div></Link><div className="notebook-card-footer"><small>{row.last_experiment_at ? `最近记录 ${row.last_experiment_at.slice(0, 10)}` : `创建于 ${row.created_at.slice(0, 10)}`}</small><Button variant="outline" onClick={() => setEditing(row)}>编辑</Button></div></article>)}</div>
-    {data && !data.items.length && <p>没有匹配的记录本。</p>}{data && data.total > 24 && <div className="page-nav"><Button variant="outline" disabled={page === 1} onClick={() => setPage(page - 1)}>上一页</Button><span>第 {page} 页</span><Button variant="outline" disabled={page * 24 >= data.total} onClick={() => setPage(page + 1)}>下一页</Button></div>}
+    {data && !data.items.length && <p>没有匹配的记录本。</p>}{data && data.total > 24 && <Pagination page={page} total={data.total} size={24} onPage={setPage} />}
     {editing && <NotebookDialog item={editing === "new" ? undefined : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); setRevision(revision + 1) }} />}
   </main>
 }
