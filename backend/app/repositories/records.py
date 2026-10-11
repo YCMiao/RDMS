@@ -132,20 +132,17 @@ def compound_has_references(session: Session, record_id: UUID) -> bool:
     return any(value is not None for value in (explicit, sample, reaction))
 
 
-def records_page(
-    session: Session,
+def records_query(
     model: type[Experiment] | type[Compound],
     *,
     q: str | None,
     tag_id: UUID | None,
-    page: int,
-    page_size: int,
     sort: str,
     status: str | None = None,
     date_from: Any = None,
     date_to: Any = None,
     notebook_id: UUID | None = None,
-) -> tuple[list[Experiment | Compound], int]:
+) -> tuple[Select[Any], list[Any]]:
     stmt = select(model).where(model.deleted_at.is_(None))
     if q:
         pattern = f"%{escaped(q.strip())}%"
@@ -167,6 +164,7 @@ def records_page(
         else:
             link, column = CompoundTag, CompoundTag.compound_id
         stmt = stmt.join(link, column == model.id).where(link.tag_id == tag_id)
+    ordering: list[Any]
     if model is Experiment:
         if notebook_id:
             stmt = stmt.where(Experiment.notebook_id == notebook_id)
@@ -182,32 +180,88 @@ def records_page(
             year = func.substring(Notebook.code, 3).cast(Integer)
             number = Experiment.notebook_number
             stmt = stmt.join(Notebook, Notebook.id == Experiment.notebook_id)
-            stmt = (
-                stmt.order_by(year.asc(), number.asc(), Experiment.id.asc())
+            ordering = (
+                [year.asc(), number.asc(), Experiment.id.asc()]
                 if sort == "code_asc"
-                else stmt.order_by(year.desc(), number.desc(), Experiment.id.desc())
+                else [year.desc(), number.desc(), Experiment.id.desc()]
             )
         elif sort in {"title_asc", "title_desc"}:
-            stmt = (
-                stmt.order_by(Experiment.title.asc(), Experiment.id.asc())
+            ordering = (
+                [Experiment.title.asc(), Experiment.id.asc()]
                 if sort == "title_asc"
-                else stmt.order_by(Experiment.title.desc(), Experiment.id.desc())
+                else [Experiment.title.desc(), Experiment.id.desc()]
             )
         else:
-            stmt = (
-                stmt.order_by(Experiment.date.asc(), Experiment.id.asc())
+            ordering = (
+                [Experiment.date.asc(), Experiment.id.asc()]
                 if sort == "date_asc"
-                else stmt.order_by(Experiment.date.desc(), Experiment.id.desc())
+                else [Experiment.date.desc(), Experiment.id.desc()]
             )
-
     else:
-        stmt = (
-            stmt.order_by(Compound.name.asc(), Compound.id.asc())
+        ordering = (
+            [Compound.name.asc(), Compound.id.asc()]
             if sort == "name_asc"
-            else stmt.order_by(Compound.created_at.desc(), Compound.id.desc())
+            else [Compound.created_at.desc(), Compound.id.desc()]
         )
+    return stmt.order_by(*ordering), ordering
+
+
+def records_page(
+    session: Session,
+    model: type[Experiment] | type[Compound],
+    *,
+    q: str | None,
+    tag_id: UUID | None,
+    page: int,
+    page_size: int,
+    sort: str,
+    status: str | None = None,
+    date_from: Any = None,
+    date_to: Any = None,
+    notebook_id: UUID | None = None,
+) -> tuple[list[Experiment | Compound], int]:
+    stmt, _ = records_query(
+        model,
+        q=q,
+        tag_id=tag_id,
+        sort=sort,
+        status=status,
+        date_from=date_from,
+        date_to=date_to,
+        notebook_id=notebook_id,
+    )
     rows, total = page_query(session, stmt, page, page_size)
     return cast(list[Experiment | Compound], rows), total
+
+
+def record_neighbors(
+    session: Session,
+    model: type[Experiment] | type[Compound],
+    record_id: UUID,
+    **filters: Any,
+) -> dict[str, Any]:
+    stmt, ordering = records_query(model, **filters)
+    # Apply filters before window functions, then select the current row after them.
+    window = (
+        stmt.order_by(None)
+        .with_only_columns(
+            model.id,
+            func.lag(model.id).over(order_by=ordering).label("previous_id"),
+            func.lead(model.id).over(order_by=ordering).label("next_id"),
+            func.row_number().over(order_by=ordering).label("position"),
+        )
+        .subquery()
+    )
+    row = (
+        session.execute(
+            select(window.c.previous_id, window.c.next_id, window.c.position).where(
+                window.c.id == record_id
+            )
+        )
+        .mappings()
+        .one_or_none()
+    )
+    return dict(row) if row else {"previous_id": None, "next_id": None, "position": None}
 
 
 def source_query() -> Any:

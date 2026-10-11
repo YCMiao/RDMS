@@ -81,7 +81,9 @@ export function SampleEditor() {
   return <main className="records-page editor-page"><div className="page-heading"><div><span className="eyebrow">SAMPLE / {item?.sample_code}</span><h1>{item?.name || item?.sample_code || "样品"}</h1></div><Link to="/samples" className="text-link">返回样品</Link></div>{error && <p role="alert">{error}</p>}{item && <p>来源实验：<Link to={`/experiments/${item.experiment_id}`}>查看实验</Link> · 版本 {item.version}</p>}{deleted ? <Button onClick={() => void restore()}>恢复样品</Button> : item && <form className="record-form" onSubmit={event => void save(event)}><div className="form-grid"><label>名称<input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label><label>样品类型 *<input required value={form.sample_type} onChange={event => setForm({ ...form, sample_type: event.target.value })} /></label><CompoundPicker value={form.compound_id} onChange={value => setForm({ ...form, compound_id: value })} />{([ ["amount", "数量"], ["unit", "单位"], ["concentration", "浓度"], ["concentration_unit", "浓度单位"] ] as const).map(([key, label]) => <label key={key}>{label}<input value={form[key]} onChange={event => setForm({ ...form, [key]: event.target.value })} /></label>)}<label>备注<textarea value={form.notes} onChange={event => setForm({ ...form, notes: event.target.value })} /></label></div><div className="form-actions"><Button disabled={busy}>保存修改</Button><Button type="button" variant="outline" onClick={() => void remove()}>删除样品</Button><Button type="button" variant="outline" onClick={() => navigate("/samples")}>返回</Button></div></form>}</main>
 }
 
-function ReactionCard({ item, number, leaveGuard, onChange }: { item: Reaction; number: number; leaveGuard: { current: (() => boolean) | null }; onChange: () => void }) {
+type PendingChanges = { current: (() => boolean) | null }
+
+function ReactionCard({ item, number, leaveGuard, pendingChanges, onChange }: { item: Reaction; number: number; leaveGuard: PendingChanges; pendingChanges: PendingChanges; onChange: () => void }) {
   const [form, setForm] = useState({ reaction_name: item.reaction_name, temperature_c: formatDecimalInput(item.temperature_c), temperature_k: formatDecimalInput(item.temperature_k), temperature_description: item.temperature_description || "", temperature_mode: (item.temperature_description ? "description" : item.temperature_k != null ? "kelvin" : "celsius") as "celsius" | "kelvin" | "description", reaction_time_hours: formatDecimalInput(item.reaction_time_hours), reaction_time_minutes: formatDecimalInput(item.reaction_time_minutes), reaction_time_description: item.reaction_time_description || "", time_mode: (item.reaction_time_description ? "description" : item.reaction_time_minutes != null ? "min" : "h") as "h" | "min" | "description", atmosphere: item.atmosphere || "", solvent: item.solvent || "", workup: item.workup || "", purification: item.purification || "", notes: item.notes || "" })
   const atmospherePresets = ["Air", "Nitrogen", "Argon"]
   const [atmosphereChoice, setAtmosphereChoice] = useState(!item.atmosphere ? "" : atmospherePresets.includes(item.atmosphere) ? item.atmosphere : "other")
@@ -98,12 +100,10 @@ function ReactionCard({ item, number, leaveGuard, onChange }: { item: Reaction; 
   const [editing, setEditing] = useState<Component | "new" | null>(null)
   const [compounds, setCompounds] = useState<Record<string, Compound>>({})
   useEffect(() => {
-    leaveGuard.current = () => {
-      const pending = JSON.stringify(form) !== JSON.stringify(savedForm.current) || Boolean(cardRef.current?.querySelector("form.reactant-editor"))
-      return !pending || window.confirm("切换反应将丢弃未保存的修改，确定继续？")
-    }
-    return () => { leaveGuard.current = null }
-  }, [form, leaveGuard])
+    pendingChanges.current = () => JSON.stringify(form) !== JSON.stringify(savedForm.current) || Boolean(cardRef.current?.querySelector("form:not(.reaction-details)"))
+    leaveGuard.current = () => !pendingChanges.current?.() || window.confirm("切换反应将丢弃未保存的修改，确定继续？")
+    return () => { leaveGuard.current = null; pendingChanges.current = null }
+  }, [form, leaveGuard, pendingChanges])
   useEffect(() => { let active = true; void request<Page<Component>>(`/reactions/${item.id}/components?${query({ page, page_size: 100, reactants_only: "true", exclude_solvents: "true" })}`).then(result => { if (active) { if (!result.items.length && page > 1) setPage(page - 1); else setRows(result) } }).catch(reason => { if (active) setError(errorText(reason)) }); return () => { active = false } }, [item.id, page, revision])
   useEffect(() => {
     let active = true
@@ -153,7 +153,8 @@ function ReactionCard({ item, number, leaveGuard, onChange }: { item: Reaction; 
   </article>
 }
 
-export function ExperimentLab({ experimentId }: { experimentId: string }) {
+export function ExperimentLab({ experimentId, pendingChanges }: { experimentId: string; pendingChanges?: PendingChanges }) {
+  const cardPending = useRef<(() => boolean) | null>(null)
   const leaveGuard = useRef<(() => boolean) | null>(null)
   const [samples, setSamples] = useState<Page<Sample> | null>(null)
   const [reactions, setReactions] = useState<Page<Reaction> | null>(null)
@@ -162,6 +163,11 @@ export function ExperimentLab({ experimentId }: { experimentId: string }) {
   const [samplePage, setSamplePage] = useState(1)
   const [error, setError] = useState("")
   const [name, setName] = useState("")
+  useEffect(() => {
+    if (!pendingChanges) return
+    pendingChanges.current = () => Boolean(name.trim()) || Boolean(cardPending.current?.())
+    return () => { pendingChanges.current = null }
+  }, [name, pendingChanges])
   useEffect(() => { setPage(1); setReactions(null) }, [experimentId])
   useEffect(() => { void request<Page<Sample>>(`/samples?${query({ experiment_id: experimentId, page: samplePage, page_size: 20 })}`).then(setSamples).catch(reason => setError(errorText(reason))) }, [experimentId, samplePage, revision])
   useEffect(() => {
@@ -187,7 +193,7 @@ export function ExperimentLab({ experimentId }: { experimentId: string }) {
       setPage(Math.max(1, result.total)); setRevision(revision + 1)
     } catch (reason) { setError(errorText(reason)) }
   }
-  return <><section className="relation-section" aria-label="反应记录"><h2>反应记录</h2>{error && <p role="alert">{error}</p>}<form className="relation-picker" onSubmit={event => void create(event)}><label>新反应名称<input required value={name} onChange={event => setName(event.target.value)} /></label><Button>创建反应</Button></form>{reactions && reactions.page === page ? reactions.items.length ? <>{reactions.items.map(item => <ReactionCard key={item.id} item={item} number={page} leaveGuard={leaveGuard} onChange={() => setRevision(revision + 1)} />)}<p>第 {page} 页，共 {reactions.total} 个反应</p><Button type="button" variant="outline" disabled={page === 1} onClick={() => changePage(page - 1)}>上一页</Button> <Button type="button" variant="outline" disabled={page >= reactions.total} onClick={() => changePage(page + 1)}>下一页</Button></> : <p>暂无反应。</p> : <p>正在载入反应…</p>}</section><section className="relation-section"><h2>样品</h2>{samples ? samples.items.length ? <><p>共 {samples.total} 个样品</p><div className="table-scroll"><table><thead><tr><th>编号</th><th>名称</th><th>类型</th></tr></thead><tbody>{samples.items.map(item => <tr key={item.id}><td><Link to={`/samples/${item.id}`}>{item.sample_code}</Link></td><td>{item.name || "—"}</td><td>{item.sample_type}</td></tr>)}</tbody></table></div><Button type="button" variant="outline" disabled={samplePage === 1} onClick={() => setSamplePage(samplePage - 1)}>上一页</Button> <Button type="button" variant="outline" disabled={samplePage * 20 >= samples.total} onClick={() => setSamplePage(samplePage + 1)}>下一页</Button></> : <p>暂无样品。</p> : <p>正在载入样品…</p>}<Link className="text-link" to="/samples">创建或管理样品</Link></section></>
+  return <><section className="relation-section" aria-label="反应记录"><h2>反应记录</h2>{error && <p role="alert">{error}</p>}<form className="relation-picker" onSubmit={event => void create(event)}><label>新反应名称<input required value={name} onChange={event => setName(event.target.value)} /></label><Button>创建反应</Button></form>{reactions && reactions.page === page ? reactions.items.length ? <>{reactions.items.map(item => <ReactionCard key={item.id} item={item} number={page} leaveGuard={leaveGuard} pendingChanges={cardPending} onChange={() => setRevision(revision + 1)} />)}<p>第 {page} 页，共 {reactions.total} 个反应</p><Button type="button" variant="outline" disabled={page === 1} onClick={() => changePage(page - 1)}>上一页</Button> <Button type="button" variant="outline" disabled={page >= reactions.total} onClick={() => changePage(page + 1)}>下一页</Button></> : <p>暂无反应。</p> : <p>正在载入反应…</p>}</section><section className="relation-section"><h2>样品</h2>{samples ? samples.items.length ? <><p>共 {samples.total} 个样品</p><div className="table-scroll"><table><thead><tr><th>编号</th><th>名称</th><th>类型</th></tr></thead><tbody>{samples.items.map(item => <tr key={item.id}><td><Link to={`/samples/${item.id}`}>{item.sample_code}</Link></td><td>{item.name || "—"}</td><td>{item.sample_type}</td></tr>)}</tbody></table></div><Button type="button" variant="outline" disabled={samplePage === 1} onClick={() => setSamplePage(samplePage - 1)}>上一页</Button> <Button type="button" variant="outline" disabled={samplePage * 20 >= samples.total} onClick={() => setSamplePage(samplePage + 1)}>下一页</Button></> : <p>暂无样品。</p> : <p>正在载入样品…</p>}<Link className="text-link" to="/samples">创建或管理样品</Link></section></>
 }
 
 

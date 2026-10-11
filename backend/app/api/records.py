@@ -20,6 +20,7 @@ from app.api.records_schema import (
     LinkInput,
     Page,
     ReactionBrief,
+    RecordNeighbors,
     RelationOut,
     SampleBrief,
     TagCreate,
@@ -70,6 +71,38 @@ def experiments(
         sort=sort
         if sort in {"date_desc", "date_asc", "code_desc", "code_asc", "title_desc", "title_asc"}
         else "date_desc",
+        status=status_filter,
+        notebook_id=notebook_id,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+
+@router.get("/experiments/{record_id}/neighbors", response_model=RecordNeighbors)
+def experiment_neighbors(
+    record_id: UUID,
+    db: Session = DB,
+    q: str | None = None,
+    status_filter: Literal["draft", "in_progress", "completed", "cancelled"] | None = Query(
+        None, alias="status"
+    ),
+    notebook_id: UUID | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    tag_id: UUID | None = None,
+    sort: Literal[
+        "date_desc", "date_asc", "code_desc", "code_asc", "title_desc", "title_asc"
+    ] = "date_desc",
+) -> dict[str, object]:
+    if repository.active_record(db, Experiment, record_id) is None:
+        raise records.missing()
+    return repository.record_neighbors(
+        db,
+        Experiment,
+        record_id,
+        q=q,
+        tag_id=tag_id,
+        sort=sort,
         status=status_filter,
         notebook_id=notebook_id,
         date_from=date_from,
@@ -173,6 +206,19 @@ def compounds(
         page_size=page_size,
         sort=sort if sort in {"created_desc", "name_asc"} else "created_desc",
     )
+
+
+@router.get("/compounds/{record_id}/neighbors", response_model=RecordNeighbors)
+def compound_neighbors(
+    record_id: UUID,
+    db: Session = DB,
+    q: str | None = None,
+    tag_id: UUID | None = None,
+    sort: Literal["created_desc", "name_asc"] = "created_desc",
+) -> dict[str, object]:
+    if repository.active_record(db, Compound, record_id) is None:
+        raise records.missing()
+    return repository.record_neighbors(db, Compound, record_id, q=q, tag_id=tag_id, sort=sort)
 
 
 @router.post("/compounds", response_model=CompoundOut, status_code=201)

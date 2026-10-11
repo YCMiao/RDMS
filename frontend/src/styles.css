@@ -431,3 +431,7 @@ td a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .record-form .checkbox-label input { width: 16px; height: 16px; min-height: 0; padding: 0; flex-shrink: 0; }
 .notebook-membership { display: flex; gap: 16px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
 @media (max-width: 600px) { .notebook-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.record-navigation .heading-actions { align-items: center; }
+.record-navigation .text-link { margin-left: 8px; }
+.record-navigation p { margin-top: 8px; }

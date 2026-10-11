@@ -13,6 +13,12 @@ class WriteModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class RecordNeighbors(BaseModel):
+    previous_id: UUID | None
+    next_id: UUID | None
+    position: int | None
+
+
 class VersionInput(WriteModel):
     expected_version: int = Field(ge=1)
 

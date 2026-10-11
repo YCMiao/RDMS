@@ -126,6 +126,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/experiments/{record_id}/neighbors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Experiment Neighbors */
+        get: operations["experiment_neighbors_api_experiments__record_id__neighbors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/experiments/{record_id}/copy": {
         parameters: {
             query?: never;
@@ -226,6 +243,23 @@ export interface paths {
         put?: never;
         /** Create Compound */
         post: operations["create_compound_api_compounds_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/compounds/{record_id}/neighbors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Compound Neighbors */
+        get: operations["compound_neighbors_api_compounds__record_id__neighbors_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1709,6 +1743,15 @@ export interface components {
             /** Svg */
             svg?: string | null;
         };
+        /** RecordNeighbors */
+        RecordNeighbors: {
+            /** Previous Id */
+            previous_id: string | null;
+            /** Next Id */
+            next_id: string | null;
+            /** Position */
+            position: number | null;
+        };
         /** RelationOut */
         RelationOut: {
             compound: components["schemas"]["CompoundOut"];
@@ -2403,6 +2446,45 @@ export interface operations {
             };
         };
     };
+    experiment_neighbors_api_experiments__record_id__neighbors_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                status?: ("draft" | "in_progress" | "completed" | "cancelled") | null;
+                notebook_id?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                tag_id?: string | null;
+                sort?: "date_desc" | "date_asc" | "code_desc" | "code_asc" | "title_desc" | "title_asc";
+            };
+            header?: never;
+            path: {
+                record_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordNeighbors"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     copy_experiment_api_experiments__record_id__copy_post: {
         parameters: {
             query?: never;
@@ -2728,6 +2810,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CompoundOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compound_neighbors_api_compounds__record_id__neighbors_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                tag_id?: string | null;
+                sort?: "created_desc" | "name_asc";
+            };
+            header?: never;
+            path: {
+                record_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordNeighbors"];
                 };
             };
             /** @description Validation Error */
