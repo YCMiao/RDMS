@@ -652,3 +652,19 @@ test("化合物多选批量创建标签并保留旧标签", async ({ page, reque
   await expect(page.getByRole("checkbox")).toHaveCount(0)
   await expect(page.getByRole("combobox", { name: "标签", exact: true }).getByRole("option", { name, exact: true })).toHaveCount(1)
 })
+
+test("实验列表支持编号和标题双向排序", async ({ page, request }) => {
+  const prefix = `排序验证${Date.now()}`
+  const records = []
+  for (const suffix of ["C", "A", "B"]) records.push(await (await request.post("/api/experiments", { data: { title: `${prefix}-${suffix}`, date: "2026-10-11" } })).json())
+  await page.goto("/experiments")
+  await page.getByRole("textbox", { name: "关键词" }).fill(prefix)
+  await page.getByRole("button", { name: "搜索", exact: true }).last().click()
+  const sort = page.getByRole("combobox", { name: "排序", exact: true })
+  for (const [value, expected] of [["code_asc", records], ["code_desc", [...records].reverse()], ["title_asc", [records[1], records[2], records[0]]], ["title_desc", [records[0], records[2], records[1]]]] as const) {
+    const loaded = page.waitForResponse(response => response.url().includes(`/api/experiments?`) && response.url().includes(`sort=${value}`))
+    await sort.selectOption(value)
+    expect((await loaded).status()).toBe(200)
+    await expect(page.locator("tbody tr td:first-child a")).toHaveText(expected.map(item => item.experiment_code))
+  }
+})

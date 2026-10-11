@@ -3,7 +3,7 @@
 from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import Select, func, literal, or_, select, union_all
+from sqlalchemy import Integer, Select, func, literal, or_, select, union_all
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -173,11 +173,27 @@ def records_page(
             stmt = stmt.where(Experiment.date >= date_from)
         if date_to:
             stmt = stmt.where(Experiment.date <= date_to)
-        stmt = (
-            stmt.order_by(Experiment.date.asc(), Experiment.id.asc())
-            if sort == "date_asc"
-            else stmt.order_by(Experiment.date.desc(), Experiment.id.desc())
-        )
+        if sort in {"code_asc", "code_desc"}:
+            year = func.split_part(Experiment.experiment_code, "-", 2).cast(Integer)
+            number = func.split_part(Experiment.experiment_code, "-", 3).cast(Integer)
+            stmt = (
+                stmt.order_by(year.asc(), number.asc(), Experiment.id.asc())
+                if sort == "code_asc"
+                else stmt.order_by(year.desc(), number.desc(), Experiment.id.desc())
+            )
+        elif sort in {"title_asc", "title_desc"}:
+            stmt = (
+                stmt.order_by(Experiment.title.asc(), Experiment.id.asc())
+                if sort == "title_asc"
+                else stmt.order_by(Experiment.title.desc(), Experiment.id.desc())
+            )
+        else:
+            stmt = (
+                stmt.order_by(Experiment.date.asc(), Experiment.id.asc())
+                if sort == "date_asc"
+                else stmt.order_by(Experiment.date.desc(), Experiment.id.desc())
+            )
+
     else:
         stmt = (
             stmt.order_by(Compound.name.asc(), Compound.id.asc())

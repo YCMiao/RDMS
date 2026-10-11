@@ -45,7 +45,16 @@ def experiments(
     tag_id: UUID | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
-    sort: Literal["date_desc", "date_asc", "created_desc", "name_asc"] = "date_desc",
+    sort: Literal[
+        "date_desc",
+        "date_asc",
+        "code_desc",
+        "code_asc",
+        "title_desc",
+        "title_asc",
+        "created_desc",
+        "name_asc",
+    ] = "date_desc",
 ) -> dict[str, object]:
     if status_filter and status_filter not in {"draft", "in_progress", "completed", "cancelled"}:
         raise records.RecordError(422, "VALIDATION_ERROR", "无效的实验状态")
@@ -56,7 +65,9 @@ def experiments(
         tag_id=tag_id,
         page=page,
         page_size=page_size,
-        sort=sort if sort in {"date_desc", "date_asc"} else "date_desc",
+        sort=sort
+        if sort in {"date_desc", "date_asc", "code_desc", "code_asc", "title_desc", "title_asc"}
+        else "date_desc",
         status=status_filter,
         date_from=date_from,
         date_to=date_to,

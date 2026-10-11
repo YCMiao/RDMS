@@ -1913,7 +1913,7 @@ export interface operations {
                 tag_id?: string | null;
                 page?: number;
                 page_size?: number;
-                sort?: "date_desc" | "date_asc" | "created_desc" | "name_asc";
+                sort?: "date_desc" | "date_asc" | "code_desc" | "code_asc" | "title_desc" | "title_asc" | "created_desc" | "name_asc";
             };
             header?: never;
             path?: never;

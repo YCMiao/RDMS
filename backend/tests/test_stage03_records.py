@@ -271,3 +271,43 @@ def test_bulk_compound_tag_is_atomic_and_preserves_existing_tags(client: TestCli
         == 404
     )
     assert client.get("/api/tags?q=已删除").json()["total"] == 0
+
+
+def test_experiment_code_and_title_sorting_across_pages(client: TestClient) -> None:
+    records = [
+        client.post(
+            "/api/experiments", json={"title": f"SortCase-{title}", "date": "2026-10-11"}
+        ).json()
+        for title in ["C", "A", "B", "A"]
+    ]
+    expected_titles = sorted(records, key=lambda item: (item["title"], item["id"]))
+    for sort, expected in [
+        ("code_asc", records),
+        ("code_desc", records[::-1]),
+        ("title_asc", expected_titles),
+        ("title_desc", expected_titles[::-1]),
+    ]:
+        actual = []
+        for page in [1, 2]:
+            response = client.get(
+                f"/api/experiments?q=SortCase-&sort={sort}&page_size=2&page={page}"
+            )
+            assert response.status_code == 200
+            assert response.json()["total"] == 4
+            actual.extend(item["id"] for item in response.json()["items"])
+        assert actual == [item["id"] for item in expected]
+    # Numeric ordering must continue to work beyond four digits and across years.
+    from app.models import Experiment
+
+    with Session(engine) as session:
+        for item, code in zip(
+            records,
+            ["EXP-2026-9999", "EXP-2026-10000", "EXP-2025-20000", "EXP-2027-0001"],
+            strict=True,
+        ):
+            record = session.get(Experiment, UUID(item["id"]))
+            assert record is not None
+            record.experiment_code = code
+        session.commit()
+    rows = client.get("/api/experiments?q=SortCase-&sort=code_asc").json()["items"]
+    assert [item["id"] for item in rows] == [records[i]["id"] for i in [2, 0, 1, 3]]

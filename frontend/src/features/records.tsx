@@ -63,7 +63,7 @@ export function RecordList({ kind }: { kind: Kind }) {
     } catch (reason) { setError(message(reason)) } finally { setBulkBusy(false) }
   }
   const effectiveSort = kind === "experiments"
-    ? (sort === "date_asc" || sort === "date_desc" ? sort : "date_desc")
+    ? (["date_asc", "date_desc", "code_asc", "code_desc", "title_asc", "title_desc"].includes(sort) ? sort : "date_desc")
     : (sort === "name_asc" || sort === "created_desc" ? sort : "created_desc")
   useEffect(() => { if (kind === "compounds") void request<Page<Tag>>("/tags?page_size=100").then(result => setTags(result.items)).catch(() => undefined) }, [kind, revision])
   useEffect(() => {
@@ -81,7 +81,7 @@ export function RecordList({ kind }: { kind: Kind }) {
       <Button type="submit" variant="outline">搜索</Button>
       {!experiment && <label>标签<select value={tagId} onChange={event => { setTagId(event.target.value); setPage(1) }}><option value="">全部</option>{tags.map(tag => <option key={tag.id} value={tag.id}>{tag.name}</option>)}</select></label>}
       {experiment && <><label>状态<select value={status} onChange={event => { setStatus(event.target.value); setPage(1) }}><option value="">全部</option><option value="draft">草稿</option><option value="in_progress">进行中</option><option value="completed">已完成</option><option value="cancelled">已取消</option></select></label><label>起始日期<input type="date" value={dateFrom} onChange={event => { setDateFrom(event.target.value); setPage(1) }} /></label><label>结束日期<input type="date" value={dateTo} onChange={event => { setDateTo(event.target.value); setPage(1) }} /></label></>}
-      <label>排序<select value={effectiveSort} onChange={event => { setSort(event.target.value); setPage(1) }}>{experiment ? <><option value="date_desc">日期从近到远</option><option value="date_asc">日期从远到近</option></> : <><option value="created_desc">最新创建</option><option value="name_asc">名称排序</option></>}</select></label>
+      <label>排序<select value={effectiveSort} onChange={event => { setSort(event.target.value); setPage(1) }}>{experiment ? <><option value="date_desc">日期从近到远</option><option value="date_asc">日期从远到近</option><option value="code_desc">编号从大到小</option><option value="code_asc">编号从小到大</option><option value="title_desc">标题降序</option><option value="title_asc">标题升序</option></> : <><option value="created_desc">最新创建</option><option value="name_asc">名称排序</option></>}</select></label>
     </form>
     {!experiment && multi && <form className="filter-bar bulk-tag-bar" onSubmit={event => void bulkTag(event)}><span>已选 {Object.keys(selected).length} 个</span><label>标签名称<input required maxLength={50} value={bulkName} disabled={bulkBusy} onChange={event => setBulkName(event.target.value)} /></label><Button type="submit" disabled={bulkBusy || !Object.keys(selected).length || !bulkName.trim()}>{bulkBusy ? "保存中…" : "创建并添加标签"}</Button></form>}
     {bulkNotice && <p role="status">{bulkNotice}</p>}
