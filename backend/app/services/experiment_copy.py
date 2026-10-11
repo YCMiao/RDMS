@@ -58,7 +58,7 @@ def copy_experiment(session: Session, source_id: UUID, payload: ExperimentCopy) 
         session,
         Experiment,
         target.id,
-        [tag["id"] for tag in records.get_tags(session, Experiment, source_id)],
+        [],
     )
     session.add_all(
         [

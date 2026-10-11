@@ -109,7 +109,8 @@ def test_copy_setup_has_new_identity_and_independent_reactions(client: TestClien
     assert copied["status"] == "draft" and copied["version"] == 1
     assert copied["objective"] == "目的" and copied["procedure"] == "操作"
     assert all(copied[key] is None for key in ["observation", "result", "conclusion"])
-    assert copied["tags"] == source["tags"]
+    assert copied["tags"] == []
+    assert client.get(f"/api/experiments/{source["id"]}").json()["tags"] == source["tags"]
     reactions = client.get(f"/api/experiments/{copied['id']}/reactions").json()["items"]
     assert len(reactions) == 2
     for reaction in reactions:

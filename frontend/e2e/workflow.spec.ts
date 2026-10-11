@@ -593,7 +593,8 @@ test("限制反应物固定 1 eq，产物质量与计量比自动计算收率并
 
 
 test("基础记录位于反应上方且双方各自保存并保留未保存输入", async ({ page, request }) => {
-  const experiment = await (await request.post("/api/experiments", { data: { title: "独立保存验证", date: "2026-10-11", objective: "原目的" } })).json()
+  const tag = await (await request.post("/api/tags", { data: { name: "保留历史实验标签" } })).json()
+  const experiment = await (await request.post("/api/experiments", { data: { title: "独立保存验证", date: "2026-10-11", objective: "原目的", tag_ids: [tag.id] } })).json()
   const reaction = await (await request.post(`/api/experiments/${experiment.id}/reactions`, { data: { reaction_name: "独立反应", atmosphere: "Air" } })).json()
   await page.goto(`/experiments/${experiment.id}`)
   const basic = page.getByRole("form", { name: "实验基础记录", exact: true })
@@ -609,6 +610,8 @@ test("基础记录位于反应上方且双方各自保存并保留未保存输�
   await card.getByLabel("气氛").fill("Ar")
   await basic.getByRole("button", { name: "保存基础记录", exact: true }).click()
   await expect(basic.getByRole("status")).toHaveText("已保存")
+  await expect(basic.getByText("标签", { exact: true })).toHaveCount(0)
+  expect((await (await request.get(`/api/experiments/${experiment.id}`)).json()).tags).toEqual(experiment.tags)
   expect((await (await request.get(`/api/reactions/${reaction.id}`)).json()).atmosphere).toBe("N2")
   await expect(card.getByLabel("气氛")).toHaveValue("Ar")
   await page.screenshot({ path: "test-results/experiment-basic-first.png", fullPage: true })
