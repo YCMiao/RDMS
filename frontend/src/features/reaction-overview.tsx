@@ -1,3 +1,4 @@
+import { ChemicalFormula } from "../components/chemical-formula"
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Button } from "../components/ui/button"
@@ -40,7 +41,7 @@ export function ReactionOverview({ reactionId, revision, conditions }: { reactio
     const amount = [row.amount !== null && `${formatDecimal(row.amount)} ${row.unit || ""}`, row.mmol !== null && `${formatDecimal(row.mmol)} mmol`, row.equivalents !== null && `${formatDecimal(row.equivalents)} eq`, row.role === "product" && row.yield_percent !== null && `${formatDecimal(row.yield_percent)}% 收率`].filter(Boolean).join(" · ")
     return <Link className="reaction-molecule" key={row.id} to={`/compounds/${row.compound_id}`}>
       <span className="reaction-role">{row.role === "product" ? "产物" : "底物"}</span>
-      {compound.structure_molfile ? <img src={`/api/compounds/${compound.id}/structure.svg`} alt={`${compound.name || compound.codename || "未命名化合物"} 的化学结构`} /> : <span className="reaction-no-structure">{compound.molecular_formula || "未录入结构"}</span>}
+      {compound.structure_molfile ? <img src={`/api/compounds/${compound.id}/structure.svg`} alt={`${compound.name || compound.codename || "未命名化合物"} 的化学结构`} /> : <span className="reaction-no-structure"><ChemicalFormula value={compound.molecular_formula} fallback="未录入结构" /></span>}
       <strong>{compound.name || "系统名称待补充"}</strong>{compound.codename && <small>代号：{compound.codename}</small>}<small>{amount || "未记录用量"}</small>
     </Link>
   }
