@@ -162,8 +162,10 @@ class Reaction(Versioned, Base):
         CheckConstraint(
             "reaction_time_hours IS NULL OR reaction_time_hours >= 0", name="time_nonnegative"
         ),
+        CheckConstraint("temperature_k IS NULL OR temperature_k >= 0", name="kelvin_nonnegative"),
         CheckConstraint(
-            "temperature_c IS NULL OR temperature_description IS NULL", name="temperature_exclusive"
+            "num_nonnulls(temperature_c, temperature_k, temperature_description) <= 1",
+            name="temperature_exclusive",
         ),
         CheckConstraint(
             "num_nonnulls(reaction_time_hours, reaction_time_minutes, "
@@ -183,6 +185,7 @@ class Reaction(Versioned, Base):
     reaction_name: Mapped[str] = mapped_column(String(300))
     sort_order: Mapped[int] = mapped_column(Integer, server_default="0")
     temperature_c: Mapped[Decimal | None] = mapped_column(NUMERIC)
+    temperature_k: Mapped[Decimal | None] = mapped_column(NUMERIC)
     temperature_description: Mapped[str | None] = mapped_column(String(300))
     reaction_time_hours: Mapped[Decimal | None] = mapped_column(NUMERIC)
     reaction_time_minutes: Mapped[Decimal | None] = mapped_column(NUMERIC)

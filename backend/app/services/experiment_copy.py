@@ -76,6 +76,7 @@ def copy_experiment(session: Session, source_id: UUID, payload: ExperimentCopy) 
                 for key in (
                     "reaction_name",
                     "temperature_c",
+                    "temperature_k",
                     "temperature_description",
                     "reaction_time_hours",
                     "reaction_time_minutes",

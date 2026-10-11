@@ -1397,6 +1397,8 @@ export interface components {
         ReactionFields: {
             /** Temperature C */
             temperature_c?: number | string | null;
+            /** Temperature K */
+            temperature_k?: number | string | null;
             /** Temperature Description */
             temperature_description?: string | null;
             /** Reaction Time Hours */
@@ -1448,6 +1450,8 @@ export interface components {
             reaction_name: string;
             /** Temperature C */
             temperature_c: string | null;
+            /** Temperature K */
+            temperature_k: string | null;
             /** Temperature Description */
             temperature_description: string | null;
             /** Reaction Time Hours */
@@ -1473,6 +1477,8 @@ export interface components {
             expected_version: number;
             /** Temperature C */
             temperature_c?: number | string | null;
+            /** Temperature K */
+            temperature_k?: number | string | null;
             /** Temperature Description */
             temperature_description?: string | null;
             /** Reaction Time Hours */

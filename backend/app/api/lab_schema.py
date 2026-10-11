@@ -19,6 +19,7 @@ class NumericInput(WriteModel):
         "amount",
         "concentration",
         "temperature_c",
+        "temperature_k",
         "reaction_time_hours",
         "reaction_time_minutes",
         "mmol",
@@ -75,6 +76,7 @@ class SamplePatch(NumericInput, VersionInput):
 
 class ReactionConditions(NumericInput):
     temperature_c: Decimal | None = Field(default=None, max_digits=20, decimal_places=8)
+    temperature_k: Decimal | None = Field(default=None, ge=0, max_digits=20, decimal_places=8)
     temperature_description: str | None = Field(default=None, max_length=300)
     reaction_time_hours: Decimal | None = Field(default=None, ge=0, max_digits=20, decimal_places=8)
     reaction_time_minutes: Decimal | None = Field(
@@ -89,8 +91,14 @@ class ReactionConditions(NumericInput):
 
     @model_validator(mode="after")
     def exclusive_conditions(self) -> Self:
-        if self.temperature_c is not None and self.temperature_description is not None:
-            raise ValueError("温度请选择摄氏度或描述，不能同时填写")
+        if (
+            sum(
+                value is not None
+                for value in (self.temperature_c, self.temperature_k, self.temperature_description)
+            )
+            > 1
+        ):
+            raise ValueError("温度请选择 °C、K 或描述，不能同时填写")
         if (
             sum(
                 value is not None
@@ -191,6 +199,7 @@ class ReactionOut(EntityBase):
     sort_order: int
     reaction_name: str
     temperature_c: Decimal | None
+    temperature_k: Decimal | None
     temperature_description: str | None
     reaction_time_hours: Decimal | None
     reaction_time_minutes: Decimal | None
