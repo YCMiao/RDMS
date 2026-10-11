@@ -13,7 +13,7 @@ import type { components } from "../types/api.generated"
 import {
   ApiError, request, query,
   type Compound, type CompoundInput, type Experiment, type ExperimentInput,
-  type ExperimentRelation, type Page, type Relation, type Tag,
+  type ExperimentRelation, type Page, type Tag,
 } from "../services/records"
 
 type Kind = "experiments" | "compounds"
@@ -188,36 +188,8 @@ export function RecordEditor({ kind }: { kind: Kind }) {
       {experiment ? <><label>标题 <span>*</span><input required maxLength={300} value={form.title || ""} onChange={event => set("title", event.target.value)} />{fields.title && <small role="alert">{fields.title}</small>}</label><label>日期 <span>*</span><input required type="date" value={form.date || ""} onChange={event => set("date", event.target.value)} />{fields.date && <small role="alert">{fields.date}</small>}</label><label>状态<select value={form.status || "draft"} onChange={event => set("status", event.target.value)}><option value="draft">草稿</option><option value="in_progress">进行中</option><option value="completed">已完成</option><option value="cancelled">已取消</option></select></label><label className="wide-field">目的<textarea maxLength={100000} rows={2} value={form.objective || ""} onChange={event => set("objective", event.target.value)} />{fields.objective && <small role="alert">{fields.objective}</small>}</label><details className="experiment-notes wide-field"><summary>操作记录、观察与结论</summary><div className="experiment-notes-grid">{([ ["procedure", "加料与反应操作"], ["observation", "观察"], ["result", "结果"], ["conclusion", "结论"] ] as const).map(([key, label]) => <label key={key}>{label}<textarea maxLength={100000} rows={3} value={form[key] || ""} onChange={event => set(key, event.target.value)} />{fields[key] && <small role="alert">{fields[key]}</small>}</label>)}</div></details></> : <><label>名称（IUPAC）<input maxLength={300} value={form.name || ""} onChange={event => set("name", event.target.value)} />{fields.name && <small role="alert">{fields.name}</small>}</label><label>代号<input maxLength={300} value={form.codename || ""} onChange={event => set("codename", event.target.value)} /></label><label>CAS 编号<input maxLength={32} value={form.cas_number || ""} onChange={event => set("cas_number", event.target.value)} /></label><label>分子式<input readOnly={hasStructure} maxLength={200} value={form.molecular_formula || ""} onChange={event => set("molecular_formula", event.target.value)} /></label><label className="wide-field">SMILES<input readOnly={hasStructure} maxLength={10000} value={form.smiles || ""} onChange={event => set("smiles", event.target.value)} /></label><label>分子量 (g/mol)<input readOnly={hasStructure} inputMode="decimal" value={weightTouched ? form.molecular_weight || "" : formatMass(form.molecular_weight, 2)} onChange={event => set("molecular_weight", event.target.value)} placeholder="例如 154.21" />{fields.molecular_weight && <small role="alert">{fields.molecular_weight}</small>}</label>{hasStructure && <p className="helper wide-field">分子式、SMILES 和分子量由结构计算；如需修改，请使用下方“替换结构”。</p>}<label className="wide-field">备注<textarea rows={5} value={form.notes || ""} onChange={event => set("notes", event.target.value)} /></label></>}
       <TagPicker selected={tagIds} onChange={setTags} initial={record?.tags || []} />
     </div><div className="form-actions"><Button type="submit" disabled={busy}>{busy ? "保存中…" : isNew ? (experiment ? "创建并分配编号" : "创建化合物") : "保存修改"}</Button>{!isNew && <Button type="button" variant="outline" disabled={busy} onClick={() => void remove()}>删除记录</Button>}</div></form>}
-    {!isNew && !deleted && record && (experiment ? <><ExperimentLinks item={record as Experiment} onVersion={setVersion} /><ExperimentFiles experimentId={record.id} /><SummaryPanel experimentId={record.id} experimentCode={(record as Experiment).experiment_code} /></> : <><CompoundStructurePanel item={record as Compound} /><CompoundLinks item={record as Compound} /></>)}
+    {!isNew && !deleted && record && (experiment ? <><ExperimentFiles experimentId={record.id} /><SummaryPanel experimentId={record.id} experimentCode={(record as Experiment).experiment_code} /></> : <><CompoundStructurePanel item={record as Compound} /><CompoundLinks item={record as Compound} /></>)}
   </main>
-}
-
-function ExperimentLinks({ item, onVersion }: { item: Experiment; onVersion: (version: number) => void }) {
-  const [data, setData] = useState<Page<Relation> | null>(null)
-  const [page, setPage] = useState(1)
-  const [term, setTerm] = useState("")
-  const [options, setOptions] = useState<Page<Compound> | null>(null)
-  const [optionPage, setOptionPage] = useState(1)
-  const [selected, setSelected] = useState("")
-  const [version, setVersion] = useState(item.version)
-  const [error, setError] = useState("")
-  const [busy, setBusy] = useState(false)
-  const [revision, setRevision] = useState(0)
-  useEffect(() => { setVersion(item.version) }, [item.version])
-  useEffect(() => { void request<Page<Relation>>(`/experiments/${item.id}/compounds?${query({ page, page_size: 10 })}`).then(setData).catch(reason => setError(message(reason))) }, [item.id, page, revision])
-  useEffect(() => { void request<Page<Compound>>(`/compounds?${query({ q: term, page: optionPage, page_size: 10 })}`).then(setOptions).catch(reason => setError(message(reason))) }, [term, optionPage])
-  async function link(removeId?: string) {
-    if (busy) return
-    setBusy(true); setError("")
-    try {
-      await request<void>(`/experiments/${item.id}/compounds${removeId ? `/${removeId}?expected_version=${version}` : ""}`, removeId ? { method: "DELETE" } : { method: "POST", body: JSON.stringify({ compound_id: selected, expected_version: version }) })
-      setVersion(version + 1); onVersion(version + 1); setRevision(current => current + 1); setSelected("")
-    } catch (reason) { setError(message(reason)) } finally { setBusy(false) }
-  }
-  return <section className="relation-section"><h2>相关化合物</h2><p className="helper">显式关联可解除；样品和反应来源会独立保留。</p>{error && <Notice text={error} />}
-    <div className="relation-picker"><label>查找已有化合物<input value={term} onChange={event => { setTerm(event.target.value); setOptionPage(1) }} placeholder="名称、代号、CAS 或 SMILES" /></label><label>选择化合物<select value={selected} onChange={event => setSelected(event.target.value)}><option value="">请选择</option>{options?.items.map(compound => <option key={compound.id} value={compound.id}>{compound.cas_number || "CAS 待确认"} · {compound.codename || compound.name || "名称待补充"}</option>)}</select></label><Button type="button" disabled={!selected || busy} onClick={() => void link()}>建立关联</Button></div>{options && <PageNav page={optionPage} total={options.total} size={10} onPage={setOptionPage} />}
-    {data && (data.items.length ? <><div className="table-scroll"><table><thead><tr><th>CAS 编号</th><th>名称（IUPAC） / 代号</th><th>来源</th><th>操作</th></tr></thead><tbody>{data.items.map(row => <tr key={row.compound.id}><td><Link to={`/compounds/${row.compound.id}`}>{row.compound.cas_number || "CAS 待确认"}</Link></td><td>{row.compound.name || "系统名称待补充"}<small className="block">{row.compound.codename}</small></td><td>{row.sources.join("、")}</td><td>{row.sources.includes("explicit") && <Button type="button" variant="outline" disabled={busy} onClick={() => void link(row.compound.id)}>解除显式关联</Button>}</td></tr>)}</tbody></table></div><PageNav page={page} total={data.total} size={10} onPage={setPage} /></> : <p className="helper">暂无相关化合物。</p>)}
-  </section>
 }
 
 function CompoundLinks({ item }: { item: Compound }) {
