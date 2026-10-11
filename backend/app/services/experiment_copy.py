@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.records_schema import ExperimentCopy
 from app.models import Compound, Experiment, ExperimentCompound, Reaction, ReactionComponent
 from app.services import records
-from app.services.numbering import allocate_code
+from app.services.notebooks import allocate
 
 
 def copy_experiment(session: Session, source_id: UUID, payload: ExperimentCopy) -> dict[str, Any]:
@@ -44,7 +44,7 @@ def copy_experiment(session: Session, source_id: UUID, payload: ExperimentCopy) 
         ).all()
     )
     target = Experiment(
-        experiment_code=allocate_code(session, "EXP"),
+        **allocate(session, payload.notebook_id or source.notebook_id),
         title=payload.title,
         date=payload.date,
         status="draft",

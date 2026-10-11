@@ -13,7 +13,7 @@ describe("experiment editor", () => {
     const sent: unknown[] = []
     const created = {
       id: "9bcb3bdd-08a9-44a9-8202-feb3d36092f4",
-      experiment_code: "EXP-2026-0001",
+      experiment_code: "NB001-0001",
       title: "新的实验",
       date: "2026-09-23",
       status: "draft",
@@ -29,6 +29,7 @@ describe("experiment editor", () => {
     }
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input)
+      if (url.startsWith("/api/notebooks")) return new Response(JSON.stringify({ items: [{ id: "00000000-0000-4000-8000-000000000001", code: "NB001", name: "已有实验", archived: false }], total: 1 }))
       if (url === "/api/experiments" && init?.method === "POST") {
         sent.push(JSON.parse(String(init.body)))
         return new Response(JSON.stringify(created), { status: 201 })
@@ -39,7 +40,7 @@ describe("experiment editor", () => {
     render(<MemoryRouter initialEntries={["/experiments/new"]}><Routes><Route path="/experiments/new" element={<RecordEditor kind="experiments" />} /><Route path="/experiments/:id" element={<RecordEditor kind="experiments" />} /></Routes></MemoryRouter>)
     await userEvent.type(screen.getByRole("textbox", { name: /标题/ }), "新的实验")
     await userEvent.click(screen.getByRole("button", { name: "创建并分配编号" }))
-    await waitFor(() => expect(screen.getByText(/EXP-2026-0001/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/NB001-0001/)).toBeInTheDocument())
     expect(sent).toHaveLength(1)
     expect(sent[0]).toMatchObject({ title: "新的实验" })
     expect(sent[0]).not.toHaveProperty("tag_ids")

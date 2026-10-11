@@ -28,7 +28,6 @@ from app.models import (
     Tag,
 )
 from app.repositories import records as repository
-from app.services.numbering import allocate_code
 from app.services.versioning import update_if_version
 
 
@@ -111,6 +110,15 @@ def output(session: Session, record: Experiment | Compound) -> dict[str, Any]:
     result = {
         key: getattr(record, key) for key in ("id", "created_at", "updated_at", "version", *keys)
     }
+    if isinstance(record, Experiment):
+        from app.models import Notebook
+
+        notebook = session.get(Notebook, record.notebook_id) if record.notebook_id else None
+        result.update(
+            notebook_id=record.notebook_id,
+            notebook_number=record.notebook_number,
+            notebook_name=notebook.name if notebook else None,
+        )
     result["tags"] = get_tags(
         session, Experiment if isinstance(record, Experiment) else Compound, record.id
     )
@@ -181,10 +189,11 @@ def create_record(
             exact_mass=parsed.exact_mass,
             inchi_key=parsed.inchi_key,
         )
-    record = model(
-        **values,
-        **({"experiment_code": allocate_code(session, "EXP")} if model is Experiment else {}),
-    )
+    if model is Experiment:
+        from app.services.notebooks import allocate
+
+        values.update(allocate(session, values.pop("notebook_id", None)))
+    record = model(**values)
     session.add(record)
     session.flush()
     replace_tags(session, model, record.id, payload.tag_ids)
@@ -267,6 +276,7 @@ def change_deleted(
     version: int,
     *,
     restore: bool,
+    notebook_id: UUID | None = None,
 ) -> dict[str, Any] | None:
     record = lock_record(session, model, record_id, active=False)
     if restore and record.deleted_at is None or not restore and record.deleted_at is not None:
@@ -315,7 +325,12 @@ def change_deleted(
                 compound.deleted_at is not None for compound in compounds
             ):
                 raise conflict("请先恢复关联的化合物")
-    if not update_if_version(session, model, record_id, version, {}, deleted=not restore):
+    changes: dict[str, Any] = {}
+    if restore and model is Experiment:
+        from app.services.notebooks import allocate
+
+        changes = allocate(session, notebook_id or getattr(record, "notebook_id", None))
+    if not update_if_version(session, model, record_id, version, changes, deleted=not restore):
         raise conflict()
     session.commit()
     session.refresh(record)
@@ -469,6 +484,7 @@ def list_records(
     status: str | None = None,
     date_from: Any = None,
     date_to: Any = None,
+    notebook_id: UUID | None = None,
 ) -> dict[str, Any]:
     rows, total = repository.records_page(
         session,
@@ -481,6 +497,7 @@ def list_records(
         status=status,
         date_from=date_from,
         date_to=date_to,
+        notebook_id=notebook_id,
     )
     return {
         "items": [output(session, row) for row in rows],

@@ -42,7 +42,7 @@ def test_crud_tags_and_relationships(client: TestClient) -> None:
     )
     assert experiment.status_code == 201, experiment.text
     exp = experiment.json()
-    assert exp["experiment_code"].startswith("EXP-2026-")
+    assert exp["experiment_code"].startswith("NB001-")
     assert exp["title"] == "条件探索"
     assert exp["tags"][0]["name"] == "条件探索"
     compound = client.post(
@@ -296,18 +296,19 @@ def test_experiment_code_and_title_sorting_across_pages(client: TestClient) -> N
             assert response.json()["total"] == 4
             actual.extend(item["id"] for item in response.json()["items"])
         assert actual == [item["id"] for item in expected]
-    # Numeric ordering must continue to work beyond four digits and across years.
+    # Numeric ordering must continue beyond four digits within a notebook.
     from app.models import Experiment
 
     with Session(engine) as session:
         for item, code in zip(
             records,
-            ["EXP-2026-9999", "EXP-2026-10000", "EXP-2025-20000", "EXP-2027-0001"],
+            ["NB001-9999", "NB001-10000", "NB001-20000", "NB001-30000"],
             strict=True,
         ):
             record = session.get(Experiment, UUID(item["id"]))
             assert record is not None
             record.experiment_code = code
+            record.notebook_number = int(code.split("-")[-1])
         session.commit()
     rows = client.get("/api/experiments?q=SortCase-&sort=code_asc").json()["items"]
-    assert [item["id"] for item in rows] == [records[i]["id"] for i in [2, 0, 1, 3]]
+    assert [item["id"] for item in rows] == [records[i]["id"] for i in [0, 1, 2, 3]]

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import type { components } from "../types/api.generated"
+import { NotebookSelect } from "./notebooks"
 import { Button } from "../components/ui/button"
 import { query, request, type Experiment, type Page } from "../services/records"
 
@@ -9,7 +10,8 @@ function today() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
 }
 
-export function ExperimentCopyDialog({ onClose }: { onClose: () => void }) {
+export function ExperimentCopyDialog({ onClose, notebookId = "" }: { onClose: () => void; notebookId?: string }) {
+  const [target, setTarget] = useState(notebookId || "00000000-0000-4000-8000-000000000001")
   const dialog = useRef<HTMLDialogElement>(null)
   const saving = useRef(false)
   const navigate = useNavigate()
@@ -38,7 +40,7 @@ export function ExperimentCopyDialog({ onClose }: { onClose: () => void }) {
     saving.current = true; setBusy(true); setError("")
     try {
       const copied = await request<Experiment>(`/experiments/${source.id}/copy`, {
-        method: "POST", body: JSON.stringify({ title, date, expected_version: source.version } satisfies components["schemas"]["ExperimentCopy"]),
+        method: "POST", body: JSON.stringify({ title, date, notebook_id: target, expected_version: source.version } satisfies components["schemas"]["ExperimentCopy"]),
       })
       navigate(`/experiments/${copied.id}`)
       onClose()
@@ -49,10 +51,10 @@ export function ExperimentCopyDialog({ onClose }: { onClose: () => void }) {
     <div className="dialog-heading"><div><h2 id="copy-dialog-title">从现有实验复制</h2><p>复制实验设置、投料与产物，新实验为草稿。</p></div><Button variant="outline" style={{ flexShrink: 0, whiteSpace: "nowrap" }} disabled={busy} onClick={() => dialog.current?.close()}>关闭</Button></div>
     <div className="copy-source-picker">
       <label>查找原实验<input autoFocus disabled={busy} placeholder="输入标题或编号" value={search} onChange={event => { setSearch(event.target.value); setSource(null) }} /></label>
-      <label>选择原实验<select disabled={busy || !data || q !== search.trim()} value={source?.id || ""} onChange={event => { const item = data?.items.find(item => item.id === event.target.value); setSource(item || null); if (item) setTitle(`${item.title.slice(0, 297)} 副本`) }}><option value="">{!data || q !== search.trim() ? "正在查找…" : data.items.length ? "请选择原实验" : "没有匹配的实验"}</option>{data?.items.map(item => <option key={item.id} value={item.id}>{item.experiment_code} · {item.title} · {item.date}</option>)}</select></label>
+      <label>选择原实验<select aria-label="选择原实验" disabled={busy || !data || q !== search.trim()} value={source?.id || ""} onChange={event => { const item = data?.items.find(item => item.id === event.target.value); setSource(item || null); if (item) setTitle(`${item.title.slice(0, 297)} 副本`) }}><option value="">{!data || q !== search.trim() ? "正在查找…" : data.items.length ? "请选择原实验" : "没有匹配的实验"}</option>{data?.items.map(item => <option key={item.id} value={item.id}>{item.experiment_code} · {item.title} · {item.date}</option>)}</select></label>
       {data && data.total > 25 && <div className="page-nav"><span>第 {page} 页 · 共 {data.total} 条</span><Button type="button" variant="outline" disabled={busy || page === 1} onClick={() => { setSource(null); setPage(page - 1) }}>上一页</Button><Button type="button" variant="outline" disabled={busy || page * 25 >= data.total} onClick={() => { setSource(null); setPage(page + 1) }}>下一页</Button></div>}
     </div>
     {error && <p role="alert">{error}</p>}
-    <form className="record-form" onSubmit={event => void submit(event)}><fieldset disabled={busy}><div className="form-grid"><label>新实验标题<input required maxLength={300} value={title} onChange={event => setTitle(event.target.value)} /></label><label>新实验日期<input required type="date" value={date} onChange={event => setDate(event.target.value)} /></label></div></fieldset><div className="form-actions"><Button disabled={busy || !source}>{busy ? "复制中…" : "复制并创建实验"}</Button><Button type="button" variant="outline" disabled={busy} onClick={() => dialog.current?.close()}>取消</Button></div></form>
+    <form className="record-form" onSubmit={event => void submit(event)}><fieldset disabled={busy}><div className="form-grid"><div className="wide-field"><NotebookSelect value={target} onChange={setTarget} /></div><label>新实验标题<input required maxLength={300} value={title} onChange={event => setTitle(event.target.value)} /></label><label>新实验日期<input required type="date" value={date} onChange={event => setDate(event.target.value)} /></label></div></fieldset><div className="form-actions"><Button disabled={busy || !source}>{busy ? "复制中…" : "复制并创建实验"}</Button><Button type="button" variant="outline" disabled={busy} onClick={() => dialog.current?.close()}>取消</Button></div></form>
   </dialog>
 }

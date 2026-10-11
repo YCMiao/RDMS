@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
+from app.api.notebook_schema import ExperimentRestore
 from app.api.records_schema import (
     CompoundBulkTag,
     CompoundBulkTagOut,
@@ -40,6 +41,7 @@ def experiments(
     db: Session = DB,
     q: str | None = None,
     status_filter: str | None = Query(None, alias="status"),
+    notebook_id: UUID | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
     tag_id: UUID | None = None,
@@ -69,6 +71,7 @@ def experiments(
         if sort in {"date_desc", "date_asc", "code_desc", "code_asc", "title_desc", "title_asc"}
         else "date_desc",
         status=status_filter,
+        notebook_id=notebook_id,
         date_from=date_from,
         date_to=date_to,
     )
@@ -113,9 +116,16 @@ def delete_experiment(
 
 @router.post("/experiments/{record_id}/restore", response_model=ExperimentOut)
 def restore_experiment(
-    record_id: UUID, payload: VersionInput, db: Session = DB
+    record_id: UUID, payload: ExperimentRestore, db: Session = DB
 ) -> dict[str, object]:
-    return records.change_deleted(db, Experiment, record_id, payload.expected_version, restore=True)  # type: ignore[return-value]
+    return records.change_deleted(
+        db,
+        Experiment,
+        record_id,
+        payload.expected_version,
+        restore=True,
+        notebook_id=payload.notebook_id,
+    )  # type: ignore[return-value]
 
 
 @router.get("/experiments/{record_id}/compounds", response_model=Page[RelationOut])

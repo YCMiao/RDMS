@@ -20,6 +20,7 @@ from app.models import (
     ReactionComponent,
     Sample,
 )
+from app.services.notebooks import allocate as allocate_notebook
 from app.services.numbering import allocate_code
 from app.services.versioning import update_if_version
 from app.services.visibility import visible_components, visible_files, visible_samples
@@ -34,9 +35,7 @@ def db_engine():  # type: ignore[no-untyped-def]
 
 def make_experiment(session: Session, *, year: int = 2035) -> Experiment:
     experiment = Experiment(
-        experiment_code=allocate_code(
-            session, "EXP", clock=lambda: datetime(year, 1, 1, tzinfo=UTC)
-        ),
+        **allocate_notebook(session, None),
         title="实验",
         date=date(year, 1, 1),
     )
@@ -156,7 +155,7 @@ def test_fifty_independent_transactions_and_committed_number_not_reused(db_engin
     def create_one(index: int) -> tuple[str, str]:
         with Session(db_engine) as session:
             compound = Experiment(
-                experiment_code=allocate_code(session, "EXP"),
+                **allocate_notebook(session, None),
                 title=f"并发{index}",
                 date=date(2035, 1, 1),
             )
@@ -186,14 +185,17 @@ def test_calendar_year_timezone_width_and_rollback(db_engine) -> None:  # type: 
             allocate_code(session, "CMP", clock=lambda: before)
         assert first.startswith("EXP-2041-")
         assert next_year.startswith("EXP-2042-")
-        experiment = Experiment(experiment_code=first, title="跨年", date=date(2041, 12, 31))
+        experiment = Experiment(
+            **allocate_notebook(session, None), title="跨年", date=date(2041, 12, 31)
+        )
+        notebook_code = experiment.experiment_code
         session.add(experiment)
         session.commit()
         experiment_id = experiment.id
     with Session(db_engine) as session:
         assert update_if_version(session, Experiment, experiment_id, 1, {"date": date(2042, 1, 1)})
         session.commit()
-        assert session.get(Experiment, experiment_id).experiment_code == first
+        assert session.get(Experiment, experiment_id).experiment_code == notebook_code
     with Session(db_engine) as session:
         allocate_code(session, "SMP", clock=lambda: after)
         session.execute(
@@ -210,7 +212,9 @@ def test_calendar_year_timezone_width_and_rollback(db_engine) -> None:  # type: 
         session.commit()
     with Session(db_engine) as session:
         code = allocate_code(session, "EXP", clock=lambda: datetime(2050, 1, 1, tzinfo=UTC))
-        session.add(Experiment(experiment_code=code, title="将回滚", date=date(2050, 1, 1)))
+        session.add(
+            Experiment(**allocate_notebook(session, None), title="将回滚", date=date(2050, 1, 1))
+        )
         session.flush()
         session.rollback()
     with Session(db_engine) as session:

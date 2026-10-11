@@ -1,5 +1,15 @@
 # 执行进度
 
+## 实验记录本与本内编号（2026-10-11）
+
+- 动工前将上一阶段已验证的 K 温度、紧凑布局和气氛菜单保存为 Git 基线 `78b99ea66c71dace6cb08a439d40c86cadf849fa`，当前任务可与该提交比较。
+- 实验入口改为记录本方块卡片，显示固定代号、名称、说明、有效实验数与最近记录日期；支持创建、改名、归档/取消归档、分页查找和全部实验入口。本内列表保留搜索、排序及日期/状态筛选，默认新建归入当前本；复制可选择目标本，详情/列表多选支持编号预览及原子移入，回收站及删除后详情恢复须选目标本。归档后可阅读并移出，停止向该本写入新实验。
+- 编号 NB001-0001 等由各本计数器在事务内分配，跨年连续、删除/移出不复用、四位以上不截断。移动前显示新编号，目标编号或实验版本变化拒绝执行；跨本移动保持 UUID、反应/样品/文件关联，批量失败整批回滚。实验按批准方案放弃旧 EXP 编号，不显示或搜索历史编号。
+- Alembic `b8e1f3c605ad` 创建“已有实验”，只将有效实验按原编号年份和流水号顺序重新编号；回收站实验不归本、不占号，旧编号清空。迁移前备份 `backups/pre-notebooks-20261011` 已 verify，最终迁移前快照与备份期快照相同。真实库已核对迁移版本，7 个有效实验对应 NB001-0001 至 NB001-0007，回收站行的 notebook_id/notebook_number/experiment_code 均为空；旧实验除编号与新增归属字段外所有字段（含版本/时间戳）及其他原有表逐项相同。原始上传 full-hash 检查 consistent=true。
+- `RDMS_CHECK_CACHED_DEPS=1 scripts/check.sh all` 退出 0：后端 Ruff/mypy/独立 PostgreSQL 54 项，前端 lint/类型/31 项/构建，隔离浏览器 17 项通过。新增验证覆盖迁移排除回收站、编号排序、并发/跨年/超四位、预览冲突、批量回滚、跨本复制、恢复及归档；浏览器覆盖完整操作及桌面/窄屏卡片，截图 frontend/test-results/notebook-cards.png、notebook-cards-mobile.png 已核对。缓存模式从当前 Docker 构建阶段获取同版本依赖，避免重复下载；默认检查模式保留。所有测试只使用独立数据库和临时文件，隔离容器/网络/临时依赖包已清理。
+- migration/backend/frontend 已构建并部署，实际全部 7 条实验详情、反应列表及摘要均 HTTP 200，记录本接口返回正确数量。日志 /tmp/rdms-notebook-all-final.log、/tmp/rdms-notebook-backup.log、/tmp/rdms-notebook-verify.log、/tmp/rdms-notebook-migrate.log、/tmp/rdms-notebook-deploy.log、/tmp/rdms-notebook-data-after.log；逐表快照 /tmp/rdms-notebook-before-final.json 与 /tmp/rdms-notebook-after.json。
+- 旧编号按授权放弃，迁移拒绝直接 downgrade；完整回退必须从上述备份隔离恢复并配合迁移前代码，不能只回退代码。规则见 docs/notebooks.md，README 和验收索引同步。
+
 ## 气氛预设菜单（2026-10-11）
 
 - 气氛改为下拉菜单，提供 Air、Nitrogen、Argon、其他；空记录保持未选择，选择其他显示自定义输入。已有非预设文字原样载入其他；切换预设再回其他保留未保存文字。保留反应名称/气氛 4:1 同排及独立保存。

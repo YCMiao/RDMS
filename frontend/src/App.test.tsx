@@ -41,7 +41,7 @@ describe("application shell", () => {
   it("shows an empty experiment list from the API", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input)
-      if (url.startsWith("/api/experiments?")) return new Response(JSON.stringify({ items: [], page: 1, page_size: 25, total: 0 }), { status: 200 })
+      if (url.startsWith("/api/notebooks?") || url.startsWith("/api/experiments?")) return new Response(JSON.stringify({ items: [], page: 1, page_size: 25, total: 0 }), { status: 200 })
       if (url.startsWith("/api/tags?")) return new Response(JSON.stringify({ items: [], page: 1, page_size: 100, total: 0 }), { status: 200 })
       return new Response(JSON.stringify({ status: "ok" }), { status: 200 })
     })
@@ -52,7 +52,7 @@ describe("application shell", () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole("heading", { name: "实验记录" })).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByText("这里还没有记录")).toBeInTheDocument())
+    expect(screen.getByRole("heading", { name: "实验记录本" })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText("没有匹配的记录本。")).toBeInTheDocument())
   })
 })

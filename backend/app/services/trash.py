@@ -133,7 +133,7 @@ def reason(session: Session, kind: TrashType, row: Any) -> tuple[bool, str | Non
 
 def label(kind: TrashType, row: Any) -> str:
     if kind == "experiment":
-        return f"{row.experiment_code} · {row.title}"
+        return f"{row.experiment_code} · {row.title}" if row.experiment_code else row.title
     if kind == "compound":
         return f"{row.cas_number or 'CAS 待确认'} · {row.name or row.codename or '名称待补充'}"
     if kind == "sample":

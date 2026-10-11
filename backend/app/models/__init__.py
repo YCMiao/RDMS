@@ -42,6 +42,22 @@ class Versioned(Timestamped):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class Notebook(Timestamped, Base):
+    __tablename__ = "notebook"
+    __table_args__ = (
+        CheckConstraint("length(btrim(name)) > 0", name="name_nonempty"),
+        CheckConstraint("next_number > 0", name="next_positive"),
+        CheckConstraint("version > 0", name="version_positive"),
+    )
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(32), unique=True)
+    name: Mapped[str] = mapped_column(String(100))
+    description: Mapped[str | None] = mapped_column(String(1000))
+    archived: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    next_number: Mapped[int] = mapped_column(BigInteger, server_default="1")
+    version: Mapped[int] = mapped_column(Integer, server_default="1")
+
+
 class Experiment(Versioned, Base):
     __tablename__ = "experiment"
     __table_args__ = (
@@ -65,9 +81,21 @@ class Experiment(Versioned, Base):
         ),
         Index("ix_experiment_date_id", "date", "id"),
         Index("ix_experiment_deleted_at", "deleted_at"),
+        UniqueConstraint("notebook_id", "notebook_number", name="uq_experiment_notebook_number"),
+        CheckConstraint(
+            "(notebook_id IS NULL AND notebook_number IS NULL) OR "
+            "(notebook_id IS NOT NULL AND notebook_number IS NOT NULL AND notebook_number > 0)",
+            name="notebook_pair",
+        ),
+        CheckConstraint(
+            "deleted_at IS NOT NULL OR (notebook_id IS NOT NULL AND experiment_code IS NOT NULL)",
+            name="active_notebook",
+        ),
     )
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    experiment_code: Mapped[str] = mapped_column(String(32), unique=True)
+    experiment_code: Mapped[str | None] = mapped_column(String(32), unique=True)
+    notebook_id: Mapped[UUID | None] = mapped_column(ForeignKey("notebook.id"), index=True)
+    notebook_number: Mapped[int | None] = mapped_column(BigInteger)
     title: Mapped[str] = mapped_column(String(300))
     date: Mapped[date] = mapped_column(Date)
     objective: Mapped[str | None] = mapped_column(Text)

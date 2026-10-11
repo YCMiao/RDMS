@@ -15,6 +15,7 @@ import { Link, NavLink, Route, Routes, useNavigate } from "react-router-dom"
 
 import { Button } from "./components/ui/button"
 import { EmptyPanel } from "./components/empty-panel"
+import { ExperimentsPage } from "./features/notebooks"
 import { RecordEditor, RecordList, TagManager } from "./features/records"
 import { CompoundImportPage } from "./features/compound-chemistry"
 import { SamplesPage, SampleEditor } from "./features/lab"
@@ -164,7 +165,7 @@ export default function App() {
         </header>
         <Routes>
           <Route path="/" element={<Dashboard status={status} />} />
-          <Route path="/experiments" element={<RecordList key="experiments" kind="experiments" />} />
+          <Route path="/experiments" element={<ExperimentsPage />} />
           <Route path="/experiments/new" element={<RecordEditor kind="experiments" />} />
           <Route path="/experiments/:id" element={<RecordEditor kind="experiments" />} />
           <Route path="/compounds" element={<RecordList key="compounds" kind="compounds" />} />

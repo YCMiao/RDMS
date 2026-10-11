@@ -62,6 +62,7 @@ class CompoundBulkTagOut(BaseModel):
 
 
 class ExperimentFields(WriteModel):
+    notebook_id: UUID | None = None
     title: str = Field(min_length=1, max_length=300)
     date: Date
     objective: str | None = Field(default=None, max_length=100000)
@@ -88,6 +89,7 @@ class ExperimentFields(WriteModel):
 
 
 class ExperimentCopy(VersionInput):
+    notebook_id: UUID | None = None
     title: str = Field(min_length=1, max_length=300)
     date: Date
 
@@ -225,6 +227,9 @@ class RecordBase(BaseModel):
 
 class ExperimentOut(RecordBase):
     experiment_code: str
+    notebook_id: UUID | None
+    notebook_number: int | None
+    notebook_name: str | None
     title: str
     date: Date
     objective: str | None

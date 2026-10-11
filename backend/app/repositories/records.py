@@ -144,6 +144,7 @@ def records_page(
     status: str | None = None,
     date_from: Any = None,
     date_to: Any = None,
+    notebook_id: UUID | None = None,
 ) -> tuple[list[Experiment | Compound], int]:
     stmt = select(model).where(model.deleted_at.is_(None))
     if q:
@@ -167,6 +168,8 @@ def records_page(
             link, column = CompoundTag, CompoundTag.compound_id
         stmt = stmt.join(link, column == model.id).where(link.tag_id == tag_id)
     if model is Experiment:
+        if notebook_id:
+            stmt = stmt.where(Experiment.notebook_id == notebook_id)
         if status:
             stmt = stmt.where(Experiment.status == status)
         if date_from:
@@ -174,8 +177,11 @@ def records_page(
         if date_to:
             stmt = stmt.where(Experiment.date <= date_to)
         if sort in {"code_asc", "code_desc"}:
-            year = func.split_part(Experiment.experiment_code, "-", 2).cast(Integer)
-            number = func.split_part(Experiment.experiment_code, "-", 3).cast(Integer)
+            from app.models import Notebook
+
+            year = func.substring(Notebook.code, 3).cast(Integer)
+            number = Experiment.notebook_number
+            stmt = stmt.join(Notebook, Notebook.id == Experiment.notebook_id)
             stmt = (
                 stmt.order_by(year.asc(), number.asc(), Experiment.id.asc())
                 if sort == "code_asc"

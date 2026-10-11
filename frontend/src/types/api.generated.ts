@@ -38,6 +38,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notebooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Notebooks */
+        get: operations["list_notebooks_api_notebooks_get"];
+        put?: never;
+        /** Create Notebook */
+        post: operations["create_notebook_api_notebooks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notebooks/{notebook_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Notebook */
+        get: operations["get_notebook_api_notebooks__notebook_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch Notebook */
+        patch: operations["patch_notebook_api_notebooks__notebook_id__patch"];
+        trace?: never;
+    };
+    "/api/experiments/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transfer Experiments */
+        post: operations["transfer_experiments_api_experiments_transfer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/transfer-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transfer Preview */
+        post: operations["transfer_preview_api_experiments_transfer_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/experiments": {
         parameters: {
             query?: never;
@@ -1014,6 +1084,8 @@ export interface components {
         ExperimentCopy: {
             /** Expected Version */
             expected_version: number;
+            /** Notebook Id */
+            notebook_id?: string | null;
             /** Title */
             title: string;
             /**
@@ -1024,6 +1096,8 @@ export interface components {
         };
         /** ExperimentFields */
         ExperimentFields: {
+            /** Notebook Id */
+            notebook_id?: string | null;
             /** Title */
             title: string;
             /**
@@ -1075,6 +1149,12 @@ export interface components {
             tags: components["schemas"]["TagOut"][];
             /** Experiment Code */
             experiment_code: string;
+            /** Notebook Id */
+            notebook_id: string | null;
+            /** Notebook Number */
+            notebook_number: number | null;
+            /** Notebook Name */
+            notebook_name: string | null;
             /** Title */
             title: string;
             /**
@@ -1127,6 +1207,13 @@ export interface components {
             experiment: components["schemas"]["ExperimentOut"];
             /** Sources */
             sources: ("explicit" | "sample" | "reaction")[];
+        };
+        /** ExperimentRestore */
+        ExperimentRestore: {
+            /** Expected Version */
+            expected_version: number;
+            /** Notebook Id */
+            notebook_id?: string | null;
         };
         /** FileOut */
         FileOut: {
@@ -1224,6 +1311,71 @@ export interface components {
             /** Warnings */
             warnings: string[];
         };
+        /** NotebookFields */
+        NotebookFields: {
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+        };
+        /** NotebookOut */
+        NotebookOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string | null;
+            /** Archived */
+            archived: boolean;
+            /** Version */
+            version: number;
+            /** Experiment Count */
+            experiment_count: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Last Experiment At */
+            last_experiment_at: string | null;
+        };
+        /** NotebookPatch */
+        NotebookPatch: {
+            /** Expected Version */
+            expected_version: number;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Archived
+             * @default false
+             */
+            archived: boolean;
+        };
+        /** NotebookTransfer */
+        NotebookTransfer: {
+            /** Expected Next Number */
+            expected_next_number?: number | null;
+            /**
+             * Notebook Id
+             * Format: uuid
+             */
+            notebook_id: string;
+            /** Experiments */
+            experiments: components["schemas"]["TransferItem"][];
+        };
         /** Page[ComponentOut] */
         Page_ComponentOut_: {
             /** Items */
@@ -1272,6 +1424,17 @@ export interface components {
         Page_FileOut_: {
             /** Items */
             items: components["schemas"]["FileOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[NotebookOut] */
+        Page_NotebookOut_: {
+            /** Items */
+            items: components["schemas"]["NotebookOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -1705,6 +1868,12 @@ export interface components {
             tags: components["schemas"]["TagOut"][];
             /** Experiment Code */
             experiment_code: string;
+            /** Notebook Id */
+            notebook_id: string | null;
+            /** Notebook Number */
+            notebook_number: number | null;
+            /** Notebook Name */
+            notebook_name: string | null;
             /** Title */
             title: string;
             /**
@@ -1818,6 +1987,35 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** TransferItem */
+        TransferItem: {
+            /** Expected Version */
+            expected_version: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
+        /** TransferPreview */
+        TransferPreview: {
+            /** Next Number */
+            next_number: number;
+            /** Items */
+            items: components["schemas"]["TransferPreviewItem"][];
+        };
+        /** TransferPreviewItem */
+        TransferPreviewItem: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /** Experiment Code */
+            experiment_code: string;
+        };
         /** TrashOut */
         TrashOut: {
             /**
@@ -1909,11 +2107,211 @@ export interface operations {
             };
         };
     };
+    list_notebooks_api_notebooks_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                archived?: boolean | null;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_NotebookOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_notebook_api_notebooks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotebookFields"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotebookOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_notebook_api_notebooks__notebook_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notebook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotebookOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_notebook_api_notebooks__notebook_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notebook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotebookPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotebookOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transfer_experiments_api_experiments_transfer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotebookTransfer"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExperimentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transfer_preview_api_experiments_transfer_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotebookTransfer"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferPreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     experiments_api_experiments_get: {
         parameters: {
             query?: {
                 q?: string | null;
                 status?: string | null;
+                notebook_id?: string | null;
                 date_from?: string | null;
                 date_to?: string | null;
                 tag_id?: string | null;
@@ -2123,7 +2521,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["VersionInput"];
+                "application/json": components["schemas"]["ExperimentRestore"];
             };
         };
         responses: {
