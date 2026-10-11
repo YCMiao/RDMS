@@ -363,6 +363,10 @@ td a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .reaction-overview .reaction-reagents small { font-weight: 400; }
 
 .condition-control { display: grid; gap: 0.65rem; align-content: start; }
+.condition-control > span { color: var(--ink-soft); font-size: 12px; font-weight: 650; }
+.condition-input { display: flex; min-width: 0; }
+.condition-input input { flex: 1; min-width: 0; border-radius: 6px 0 0 6px; }
+.condition-input select { width: 100px; flex-shrink: 0; border-left: 0; border-radius: 0 6px 6px 0; }
 
 .limiting-choice { display: flex; align-items: center; gap: 8px; margin: 16px 0; }
 .limiting-choice input { width: auto; }

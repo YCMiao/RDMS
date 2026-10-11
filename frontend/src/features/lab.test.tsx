@@ -105,7 +105,7 @@ describe("sample and reaction workflows", () => {
       if (path === "/api/reactions/reaction-1" && init?.method === "PATCH") {
         const body = JSON.parse(String(init.body)) as Record<string, unknown>
         sent.push(body)
-        if (body.temperature_c === "RT") return respond({ error: { message: "请求字段无效", fields: [{ field: "body.temperature_c", message: "Input should be a valid decimal" }] } }, 422)
+        if (body.temperature_c === "25.123456789") return respond({ error: { message: "请求字段无效", fields: [{ field: "body.temperature_c", message: "Input should be a valid decimal" }] } }, 422)
         return respond({ ...reaction, ...body, version: 2 })
       }
       if (path.includes(`/experiments/${experiment.id}/reactions?`)) return respond({ ...empty, items: [reaction], total: 1 })
@@ -113,7 +113,7 @@ describe("sample and reaction workflows", () => {
     })
     render(<MemoryRouter><ExperimentLab experimentId={experiment.id} /></MemoryRouter>)
     const temperature = await screen.findByLabelText("温度 °C")
-    await userEvent.type(temperature, "RT")
+    await userEvent.type(temperature, "25.123456789")
     await userEvent.type(screen.getByLabelText("后处理"), "浓缩")
     await userEvent.click(screen.getByRole("button", { name: "保存反应" }))
     const failure = await screen.findByRole("alert")

@@ -1,5 +1,12 @@
 # 执行进度
 
+## 温度时间组合输入（2026-10-11）
+
+- 条件与处理中的温度和时间各合并为一个组合框，同排显示左侧输入、右侧单位/描述选择。°C/h/min 使用数字输入，时间非负且保留小数精度；描述模式使用文本输入。原有数据字段、模式切换时的未保存值及独立保存逻辑保留，无数据库迁移或真实数据改写。
+- 修改前 Git 基线 `f54dbcb`；可独立撤销本项并重建 frontend 回滚。执行 scripts/check.sh all：后端 49 项通过；依赖下载中断后缓存重试，前端 lint/类型/31 项/构建通过。浏览器检查同步数字输入角色，保留精度错误后的就地提示和重试，验证字母无法输入数值框、描述文字保存、分钟及重访。截图 frontend/test-results/reaction-condition-modes.png 已复核。
+- 本机 frontend 已更新，就绪返回 {"status":"ok"}。日志 /tmp/rdms-condition-combo-check.log、/tmp/rdms-condition-combo-frontend.log、/tmp/rdms-condition-combo-deploy.log；测试仅使用隔离数据库和临时文件。
+- 重建隔离环境后全部 16 项浏览器流程通过（/tmp/rdms-condition-combo-e2e-final.log），隔离容器和网络清理完成，数据卷保留。
+
 ## 实验基础记录同排布局（2026-10-11）
 
 - 标题、日期、状态在桌面宽度同一行，列宽比例 2:1:1；目的与备注保留整行，760px 以下改为单列。标题与日期必填星号和字段名同排，三个输入框对齐。仅修改实验表单布局，保存逻辑及用户数据不变。
