@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>RDMS · 探索的轨迹</title>
+  <link rel="icon" href="./mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./space.js" defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到正文</a>
+  <div class="scene" aria-hidden="true"><canvas id="space"></canvas><div class="scene-vignette"></div></div>
+  <div class="page-shell">
+    <header class="header">
+      <a class="brand" href="./" aria-label="RDMS 首页"><img src="./mark.svg" alt="" width="34" height="34"><span>RDMS<span class="brand-divider"></span><small>研究数据管理</small></span></a>
+      <nav class="main-nav" aria-label="主导航">
+        <a href="http://127.0.0.1:8080/experiments" target="_blank" rel="noopener" aria-label="实验（新标签页）">实验</a>
+        <a href="http://127.0.0.1:8080/compounds" target="_blank" rel="noopener" aria-label="化合物（新标签页）">化合物</a>
+        <a href="http://127.0.0.1:8080/samples" target="_blank" rel="noopener" aria-label="样品（新标签页）">样品</a>
+        <a href="http://127.0.0.1:8080/files" target="_blank" rel="noopener" aria-label="文件（新标签页）">文件</a>
+      </nav>
+      <div class="header-tools">
+        <button class="icon-button" id="theme-toggle" aria-label="切换浅色主题" title="切换主题"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button>
+        <a class="icon-button" href="http://127.0.0.1:8080/settings" target="_blank" rel="noopener" aria-label="设置（新标签页）" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2.5" fill="var(--bg)"/><circle cx="15" cy="17" r="2.5" fill="var(--bg)"/></svg></a>
+      </div>
+    </header>
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow"><span></span>RESEARCH DATA MANAGEMENT SYSTEM</p>
+          <h1 id="hero-title">研究数据<br><span>管理系统</span><i aria-hidden="true">.</i></h1>
+          <div class="hero-actions">
+            <a class="primary-button" href="http://127.0.0.1:8080/experiments" target="_blank" rel="noopener">进入实验室 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg><span class="sr-only">（新标签页）</span></a>
+            <a class="search-link" href="http://127.0.0.1:8080/search" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg>搜索记录<span class="sr-only">（新标签页）</span></a>
+          </div>
+        </div>
+        <div class="orbit-caption" aria-hidden="true"><span class="caption-line"></span><div><span>FIELD / 001</span><small>探索的轨迹</small></div></div>
+      </section>
+    </main>
+    <footer class="footer">
+      <div class="footer-note"><span class="status-dot"></span><span>每一次探索，皆有迹可循。</span></div>
+      <div class="motion-tools"><span class="motion-caption" aria-hidden="true">移动鼠标，改变视角</span><button id="motion-toggle" class="motion-toggle" aria-label="暂停动画" aria-pressed="false"><svg class="pause-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4 3h2v10H4zm6 0h2v10h-2z"/></svg><svg class="play-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="m5 3 8 5-8 5z"/></svg><span>暂停动画</span></button></div>
+    </footer>
+  </div>
+</body>
+</html>
