@@ -1,5 +1,14 @@
 # 执行进度
 
+## 复制实验窗口与产物复制（2026-10-11）
+
+- 用户明确指定三项：复制窗口在视口居中，沿用原字体与主题并收紧宽度；原实验改为下拉选择，输入标题/编号后自动筛选，无匹配时显示空项，超过 25 项保留分页；搜索或翻页立即清除旧选择。创建入口仍有重复提交保护、版本检查和失败保留输入。
+- 复制现在包含活跃产物组分，保留化合物引用、用量/单位、mmol、计量比、收率、排序和备注，生成独立组分 UUID，不重新计算数值；已删除组分仍排除。草稿状态、反应顺序及其他复制规则不变，样品/附件与实验观察/结果/结论不复制。不追补之前已有副本或修改原实验。
+- Git 修改前基线为 `82be3bc`，本项独立提交可撤销后重建 backend/frontend 回滚，无迁移。已有数据库和上传内容未写入或删除。
+- 已运行 `scripts/check.sh all`：后端独立 PostgreSQL 45 项、前端 31 项与 lint/类型/构建通过，浏览器首次遇到下拉菜单定位问题，改用 combobox 精确定位。重跑浏览器依赖安装 ECONNRESET；前端重新安装也有网络延迟，暂停冗余安装后复用缓存、关闭非必要审计补齐一个缺失包，完整 `npm run check` 再次退出 0（31 项）。只读挂载已验证同版本依赖到原隔离 E2E Compose，最终浏览器 12 项退出 0；覆盖居中坐标、搜索匹配与无匹配、窄屏边界、产物复制、修改副本产物后原组分完全相同。隔离测试容器和网络已清理。
+- 日志 `/tmp/rdms-copy-refresh-check.log`、`/tmp/rdms-copy-refresh-frontend-final2.log`、`/tmp/rdms-copy-refresh-e2e-offline.log`；桌面/窄屏截图 `frontend/test-results/experiment-copy-dialog.png`、`frontend/test-results/experiment-copy-dialog-mobile.png` 已目视核对。README 同步当前规则。
+- 只构建并切换本机 backend/frontend，不运行迁移或更换数据库卷；部署退出 0，就绪返回 `{"status":"ok"}`。日志 `/tmp/rdms-copy-refresh-deploy.log`。
+
 ## 实验反应单页展示与编号（2026-10-10）
 
 - 用户指定范围仅为实验详情反应区：每页请求并展示一个反应，按原显示顺序标为 REACTION 1、REACTION 2 等，上一页/下一页切换；新建后打开新增反应，删除最后一页后回到有效页，重新进入实验从第一页开始。编号只用于展示，不改写反应名称或数据库顺序。

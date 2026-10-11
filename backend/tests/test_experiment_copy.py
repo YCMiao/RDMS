@@ -1,4 +1,4 @@
-"""Experiment copy uses isolated PostgreSQL and never duplicates historical results."""
+"""Experiment copy uses isolated PostgreSQL and preserves independent product records."""
 
 from fastapi.testclient import TestClient
 
@@ -73,6 +73,11 @@ def test_copy_setup_has_new_identity_and_independent_reactions(client: TestClien
                 "compound_id": compound["id"],
                 "role": "product",
                 "yield_percent": "80",
+                "amount": "30.12345678",
+                "unit": "mg",
+                "mmol": "0.8",
+                "stoichiometric_ratio": "2",
+                "notes": "产物备注",
             },
         )
         removed = create(
@@ -111,7 +116,13 @@ def test_copy_setup_has_new_identity_and_independent_reactions(client: TestClien
         assert reaction["temperature_c"] == "25.12345678"
         assert reaction["workup"] == "水洗" and reaction["purification"] == "硅胶柱"
         components = client.get(f"/api/reactions/{reaction['id']}/components").json()["items"]
-        assert len(components) == 1
+        assert len(components) == 2
+        copied_product = next(row for row in components if row["role"] == "product")
+        assert copied_product["id"] != product["id"]
+        assert copied_product["amount"] == "30.12345678"
+        assert copied_product["yield_percent"] == "80.00000000"
+        assert copied_product["stoichiometric_ratio"] == "2.00000000"
+        assert copied_product["notes"] == "产物备注"
         assert (
             components[0]["amount"] == "92.12345678"
             and components[0]["compound_id"] == compound["id"]

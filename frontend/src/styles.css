@@ -369,3 +369,11 @@ td a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dosing-inputs > label { min-width: 0; align-content: start; }
 .dosing-inputs input, .dosing-inputs select { width: 100%; min-width: 0; }
 .record-form .dosing-inputs small { color: var(--muted); font-weight: 400; line-height: 1.5; }
+
+.experiment-copy-dialog { margin: auto; width: min(600px, calc(100vw - 32px)); }
+.copy-source-picker { display: grid; gap: 16px; margin-bottom: 20px; }
+.copy-source-picker label { display: grid; gap: 8px; min-width: 0; font-size: 13px; font-weight: 600; }
+.copy-source-picker select { width: 100%; min-width: 0; }
+.experiment-copy-dialog .record-form { padding: 0; border: 0; background: transparent; }
+.copy-source-picker input, .copy-source-picker select { min-height: 40px; max-width: 100%; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface-raised); color: var(--ink); padding: 8px 10px; font: inherit; }
+.copy-source-picker input:focus-visible, .copy-source-picker select:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }

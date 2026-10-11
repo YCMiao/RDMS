@@ -93,8 +93,6 @@ def copy_experiment(session: Session, source_id: UUID, payload: ExperimentCopy) 
         for component in components:
             if component.reaction_id != reaction.id or component.compound_id not in active_ids:
                 continue
-            if component.role == "product":
-                continue
             session.add(
                 ReactionComponent(
                     reaction_id=copied.id,
@@ -109,6 +107,7 @@ def copy_experiment(session: Session, source_id: UUID, payload: ExperimentCopy) 
                             "equivalents",
                             "is_limiting",
                             "yield_percent",
+                            "stoichiometric_ratio",
                             "sort_order",
                             "notes",
                         )
