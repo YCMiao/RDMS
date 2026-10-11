@@ -61,9 +61,6 @@ function Dashboard({ status }: { status: HealthStatus }) {
         <div>
           <span className="eyebrow">Research Data Management System</span>
           <h1>研究数据管理系统</h1>
-          <p className="lede">
-            保存实验、化合物、样品、反应与原始文件，并沿着关联查找证据。
-          </p>
         </div>
         {status === "unavailable" && (
           <p role="alert">服务暂不可用，请重试</p>
