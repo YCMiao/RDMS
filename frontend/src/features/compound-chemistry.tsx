@@ -29,9 +29,24 @@ function errorText(reason: unknown): string {
   return reason instanceof Error ? reason.message : "操作失败，请稍后重试"
 }
 
-export function CompoundStructurePanel({ item }: { item: StructuredCompound }) {
+export function CasStructureButton({ item, onSaved, disabled = false }: { item: Compound; onSaved: (item: Compound) => void; disabled?: boolean }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState("")
+  async function complete() {
+    if (busy) return
+    setBusy(true); setError("")
+    try {
+      const updated = await request<Compound>(`/compounds/${item.id}/structure/cas`, { method: "POST", body: JSON.stringify({ expected_version: item.version }) })
+      onSaved(updated)
+    } catch (reason) { setError(errorText(reason)) }
+    finally { setBusy(false) }
+  }
+  return <><Button type="button" variant="outline" disabled={busy || disabled} onClick={() => void complete()}>{busy ? "查询结构中…" : "按 CAS 补全结构"}</Button>{error && <p role="alert">{error}</p>}</>
+}
+
+export function CompoundStructurePanel({ item, onSaved, disabled }: { item: StructuredCompound; onSaved: (item: Compound) => void; disabled?: boolean }) {
   return <section className="relation-section compound-summary">
-    <div className="compound-summary-heading"><div><span className="eyebrow">STRUCTURE &amp; PROPERTIES</span><h2>结构与理化资料</h2></div><Link className="text-link" to={`/compounds/import?replace=${item.id}`}>{item.structure_molfile ? "替换结构" : "导入结构"}</Link></div>
+    <div className="compound-summary-heading"><div><span className="eyebrow">STRUCTURE &amp; PROPERTIES</span><h2>结构与理化资料</h2></div><div className="heading-actions">{!item.structure_molfile && item.cas_number && <CasStructureButton item={item} onSaved={onSaved} disabled={disabled} />}<Link className="text-link" to={`/compounds/import?replace=${item.id}`}>{item.structure_molfile ? "替换结构" : "导入结构"}</Link></div></div>
     {item.structure_molfile ? <div className="compound-summary-grid"><div className="structure-figure"><img src={`/api/compounds/${item.id}/structure.svg`} alt={`${item.name || item.codename || "未命名化合物"} 的二维化学结构`} /></div><dl className="compound-facts"><div><dt>CAS 号</dt><dd>{item.cas_number || "未确认"}{item.cas_source && <small>{item.cas_source}</small>}</dd></div><div><dt>分子式</dt><dd>{item.molecular_formula || "—"}</dd></div><div><dt>分子量</dt><dd>{item.molecular_weight ? `${formatMass(item.molecular_weight, 2)} g/mol` : "—"}</dd></div><div><dt>精确质量</dt><dd>{formatMass(item.exact_mass, 4) || "—"}</dd></div><div><dt>InChIKey</dt><dd className="mono-wrap">{item.inchi_key || "—"}</dd></div></dl></div> : <p className="helper">此记录没有结构文件。可导入 ChemDraw 的 MOL、SMILES 或 CDXML，再由本机计算结构资料。</p>}
     {item.physical_properties?.length ? <div className="compound-properties"><h3>有来源的性质</h3>{item.physical_properties.map((property, index) => <div key={`${property.name}-${index}`}><strong>{property.name}</strong><span>{property.value}</span>{property.source_url ? <a href={property.source_url} target="_blank" rel="noopener noreferrer">{property.source}</a> : <small>{property.source}</small>}</div>)}</div> : null}
   </section>

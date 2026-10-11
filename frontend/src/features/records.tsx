@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 
 import { Button } from "../components/ui/button"
-import { formatMass } from "../lib/format-mass"
+import { formatMass, formatDecimalInput } from "../lib/format-mass"
 import type { components } from "../types/api.generated"
 import {
   ApiError, request, query,
@@ -222,7 +222,7 @@ export function RecordEditor({ kind }: { kind: Kind }) {
       {!experiment && <TagPicker selected={tagIds} onChange={setTags} initial={record?.tags || []} />}
     </div><div className="form-actions"><Button type="submit" disabled={busy}>{busy ? "保存中…" : isNew ? (experiment ? "创建并分配编号" : "创建化合物") : experiment ? "保存基础记录" : "保存修改"}</Button>{saveFeedback && <p role="status">{saveFeedback}</p>}{!isNew && <Button type="button" variant="outline" disabled={busy} onClick={() => void remove()}>删除记录</Button>}</div></form>}
     {!isNew && !deleted && record && experiment && <ExperimentLab experimentId={record.id} />}
-    {!isNew && !deleted && record && (experiment ? <><ExperimentFiles experimentId={record.id} /><SummaryPanel experimentId={record.id} experimentCode={(record as Experiment).experiment_code} /></> : <><CompoundStructurePanel item={record as Compound} /><CompoundLinks item={record as Compound} /></>)}
+    {!isNew && !deleted && record && (experiment ? <><ExperimentFiles experimentId={record.id} /><SummaryPanel experimentId={record.id} experimentCode={(record as Experiment).experiment_code} /></> : <><CompoundStructurePanel item={record as Compound} disabled={busy || dirty} onSaved={item => { setRecord(item); setVersion(item.version); setForm(current => ({ ...current, smiles: item.smiles || "", molecular_formula: item.molecular_formula || "", molecular_weight: formatDecimalInput(item.molecular_weight) })); }} /><CompoundLinks item={record as Compound} /></>)}
   </main>
 }
 

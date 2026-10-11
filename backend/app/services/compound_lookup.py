@@ -8,6 +8,8 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 from app.core.config import get_settings
+from app.services.chemistry import parse_structure
+from app.services.records import RecordError
 
 CAS_PATTERN = re.compile(r"^\d{2,7}-\d{2}-\d$")
 
@@ -182,7 +184,8 @@ def lookup_cas(cas_number: str) -> dict[str, Any]:
     try:
         data = _read_json(
             "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/"
-            f"{quote(cas_number, safe='')}/property/IUPACName,MolecularFormula,MolecularWeight/JSON"
+            f"{quote(cas_number, safe='')}/property/"
+            "IUPACName,MolecularFormula,MolecularWeight,SMILES,InChIKey/JSON"
         )
         properties = data.get("PropertyTable", {}).get("Properties", [])
         if len(properties) > 5:
@@ -213,16 +216,34 @@ def lookup_cas(cas_number: str) -> dict[str, Any]:
                 continue
             if not mw.is_finite() or not 0 < mw < Decimal("1e12"):
                 continue
-            candidates.append(
-                {
-                    "name": name,
-                    "cas_number": cas_number,
-                    "molecular_formula": formula,
-                    "molecular_weight": str(mw),
-                    "source": "PubChem CAS 同义词匹配",
-                    "source_url": f"https://pubchem.ncbi.nlm.nih.gov/compound/{cid}",
-                }
-            )
+            candidate = {
+                "name": name,
+                "cas_number": cas_number,
+                "molecular_formula": formula,
+                "molecular_weight": str(mw),
+                "source": "PubChem CAS 同义词匹配",
+                "source_url": f"https://pubchem.ncbi.nlm.nih.gov/compound/{cid}",
+            }
+            smiles = entry.get("SMILES") or entry.get("IsomericSMILES")
+            if isinstance(smiles, str) and smiles.strip():
+                try:
+                    parsed = parse_structure(smiles, "smiles")
+                    if (
+                        parsed.inchi_key != entry.get("InChIKey")
+                        or parsed.molecular_formula != formula
+                    ):
+                        raise ValueError("结构与公开身份资料不一致")
+                    candidate.update(
+                        structure_molfile=parsed.molfile,
+                        smiles=parsed.smiles,
+                        inchi_key=parsed.inchi_key,
+                        svg=parsed.svg,
+                    )
+                except (RecordError, ValueError):
+                    warnings.append(f"{name} 的结构未通过核对，保留试剂资料但不关联结构")
+            else:
+                warnings.append(f"{name} 未提供可用结构，可先保存试剂资料")
+            candidates.append(candidate)
     except (LookupError, TypeError, ValueError, KeyError, AttributeError):
         warnings.append("公开资料查询失败或未收录此 CAS；可重试、选择本机记录或手动填写")
     if not candidates and not warnings:

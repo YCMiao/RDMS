@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router-dom"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { ReactantEditor } from "./reactant-editor"
 
-const ethanol = { name: "ethanol", cas_number: "64-17-5", molecular_formula: "C2H6O", molecular_weight: "46.07", source: "PubChem CAS 同义词匹配", source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/702" }
+const ethanol = { name: "ethanol", cas_number: "64-17-5", molecular_formula: "C2H6O", molecular_weight: "46.07", structure_molfile: "validated-ethanol-molfile", svg: "<svg></svg>", source: "PubChem CAS 同义词匹配", source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/702" }
 const methanol = { ...ethanol, name: "methanol", cas_number: "67-56-1", molecular_formula: "CH4O", molecular_weight: "32.04" }
 const respond = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
 const empty = { items: [], page: 1, page_size: 20, total: 0 }
@@ -111,7 +111,7 @@ describe("CAS reagent entry", () => {
     await userEvent.type(screen.getByLabelText("eq"), "1.25")
     await userEvent.click(screen.getByRole("button", { name: "加入投料表" }))
     await waitFor(() => expect(onSaved).toHaveBeenCalledOnce())
-    expect(writes[0].body).toMatchObject({ name: "ethanol", molecular_formula: "C2H6O", cas_number: "64-17-5", molecular_weight: "46.07" })
+    expect(writes[0].body).toMatchObject({ name: "ethanol", molecular_formula: "C2H6O", cas_number: "64-17-5", molecular_weight: "46.07", structure_molfile: "validated-ethanol-molfile" })
     expect(writes[1].body).toMatchObject({ compound_id: "cmp-1", role: "substrate", amount: "92.14", unit: "mg", mmol: "2", equivalents: "1.25" })
     expect(writes[1].body).not.toHaveProperty("yield_percent")
   })

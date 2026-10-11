@@ -225,6 +225,8 @@ def test_cas_reagent_lookup_checks_synonyms_and_uses_iupac() -> None:
                             "IUPACName": "ethanol",
                             "MolecularFormula": "C2H6O",
                             "MolecularWeight": "46.07",
+                            "SMILES": "CCO",
+                            "InChIKey": "LFQSCWFLJHTTHZ-UHFFFAOYSA-N",
                         },
                         {
                             "CID": 887,
@@ -245,7 +247,173 @@ def test_cas_reagent_lookup_checks_synonyms_and_uses_iupac() -> None:
     assert result["candidates"][0]["name"] == "ethanol"
     assert result["candidates"][0]["molecular_weight"] == "46.07"
     assert result["candidates"][0]["source_url"].endswith("/702")
+    assert result["candidates"][0]["smiles"] == "CCO"
+    assert "M  END" in result["candidates"][0]["structure_molfile"]
+    assert "<svg" in result["candidates"][0]["svg"]
     with patch("app.services.compound_lookup._read_json", side_effect=LookupError("offline")):
         assert lookup_cas("64-17-5")["warnings"]
     with patch("app.services.compound_lookup._read_json", return_value={}):
         assert lookup_cas("64-17-5")["candidates"] == []
+
+
+@pytest.mark.parametrize("smiles", ["C[C@H](O)C(=O)O", "CC(=O)[O-].[Na+]"])
+def test_cas_structure_preserves_stereochemistry_and_salts(smiles: str) -> None:
+    from app.services.chemistry import parse_structure
+    from app.services.compound_lookup import lookup_cas
+
+    parsed = parse_structure(smiles, "smiles")
+
+    def fake_read(url: str) -> dict[str, object]:
+        if "/property/" in url:
+            assert "SMILES,InChIKey" in url
+            return {
+                "PropertyTable": {
+                    "Properties": [
+                        {
+                            "CID": 123,
+                            "IUPACName": "verified compound",
+                            "MolecularFormula": parsed.molecular_formula,
+                            "MolecularWeight": str(parsed.molecular_weight),
+                            "IsomericSMILES": smiles,
+                            "InChIKey": parsed.inchi_key,
+                        }
+                    ]
+                }
+            }
+        return {"InformationList": {"Information": [{"CID": 123, "Synonym": ["64-17-5"]}]}}
+
+    with patch("app.services.compound_lookup._read_json", side_effect=fake_read):
+        candidate = lookup_cas("64-17-5")["candidates"][0]
+    saved = parse_structure(candidate["structure_molfile"], "molfile")
+    assert saved.inchi_key == parsed.inchi_key
+    assert saved.smiles == parsed.smiles
+    assert saved.molecular_formula == parsed.molecular_formula
+
+
+@pytest.mark.parametrize(
+    "smiles,key",
+    [
+        ("CCO", "WRONG-STRUCTURE-KEY"),
+        ("not a molecule", "LFQSCWFLJHTTHZ-UHFFFAOYSA-N"),
+        ("CCO", None),
+    ],
+)
+def test_cas_structure_rejects_unverified_structure(smiles: str, key: str | None) -> None:
+    from app.services.compound_lookup import lookup_cas
+
+    def fake_read(url: str) -> dict[str, object]:
+        if "/property/" in url:
+            return {
+                "PropertyTable": {
+                    "Properties": [
+                        {
+                            "CID": 702,
+                            "IUPACName": "ethanol",
+                            "MolecularFormula": "C2H6O",
+                            "MolecularWeight": "46.07",
+                            "SMILES": smiles,
+                            "InChIKey": key,
+                        }
+                    ]
+                }
+            }
+        return {"InformationList": {"Information": [{"CID": 702, "Synonym": ["64-17-5"]}]}}
+
+    with patch("app.services.compound_lookup._read_json", side_effect=fake_read):
+        result = lookup_cas("64-17-5")
+    assert result["candidates"][0]["name"] == "ethanol"
+    assert not result["candidates"][0].get("structure_molfile")
+    assert result["warnings"]
+
+
+def test_existing_cas_structure_completion_preserves_associations_and_versions(
+    client: TestClient,
+) -> None:
+    from app.services.chemistry import parse_structure
+
+    parsed = parse_structure("CCO")
+    candidate = {"structure_molfile": parsed.molfile, "source": "PubChem CAS 同义词匹配"}
+    item = client.post(
+        "/api/compounds",
+        json={
+            "name": "original name",
+            "codename": "EtOH",
+            "cas_number": "64-17-5",
+            "cas_source": "手工核对",
+            "molecular_formula": "C2H6O",
+            "notes": "original notes",
+            "physical_properties": [{"name": "Density", "value": "0.789", "source": "手工"}],
+        },
+    ).json()
+    experiment = client.post(
+        "/api/experiments",
+        json={
+            "title": "CAS structure link",
+            "date": "2026-10-11",
+        },
+    ).json()
+    reaction = client.post(
+        f"/api/experiments/{experiment['id']}/reactions",
+        json={
+            "reaction_name": "CAS reaction",
+        },
+    ).json()
+    component = client.post(
+        f"/api/reactions/{reaction['id']}/components",
+        json={
+            "compound_id": item["id"],
+            "role": "substrate",
+            "amount": "92.14",
+            "unit": "mg",
+            "mmol": "2",
+            "equivalents": "1",
+        },
+    ).json()
+    path = f"/api/compounds/{item['id']}/structure/cas"
+    with patch("app.api.compound_chemistry.lookup_cas", return_value={"candidates": [candidate]}):
+        response = client.post(path, json={"expected_version": item["version"]})
+    assert response.status_code == 200, response.text
+    updated = response.json()
+    for field in (
+        "id",
+        "name",
+        "codename",
+        "notes",
+        "cas_number",
+        "cas_source",
+        "physical_properties",
+        "tags",
+        "created_at",
+    ):
+        assert updated[field] == item[field]
+    assert updated["inchi_key"] == parsed.inchi_key
+    assert updated["version"] == item["version"] + 1
+    svg = client.get(f"/api/compounds/{item['id']}/structure.svg")
+    assert svg.status_code == 200 and "<svg" in svg.text
+    assert client.get(f"/api/reactions/{reaction['id']}/components").json()["items"] == [component]
+    with patch("app.api.compound_chemistry.lookup_cas") as remote:
+        assert client.post(path, json={"expected_version": item["version"]}).status_code == 409
+        assert client.post(path, json={"expected_version": updated["version"]}).json() == updated
+        remote.assert_not_called()
+
+
+def test_cas_structure_completion_never_replaces_uncertain_identity(client: TestClient) -> None:
+    from app.services.chemistry import parse_structure
+
+    item = client.post(
+        "/api/compounds",
+        json={
+            "name": "uncertain identity",
+            "cas_number": "64-17-5",
+            "molecular_formula": "CH4O",
+        },
+    ).json()
+    ethanol = {"structure_molfile": parse_structure("CCO").molfile, "source": "PubChem"}
+    path = f"/api/compounds/{item['id']}/structure/cas"
+    for candidates in ([], [ethanol, ethanol], [{"source": "PubChem"}], [ethanol]):
+        with patch(
+            "app.api.compound_chemistry.lookup_cas", return_value={"candidates": candidates}
+        ):
+            response = client.post(path, json={"expected_version": item["version"]})
+        assert response.status_code == 422, response.text
+        assert client.get(f"/api/compounds/{item['id']}").json() == item

@@ -9,8 +9,9 @@
 ## 查询与数据
 
 - `POST /api/compounds/cas/lookup` 校验 CAS 格式及校验位，精确检索有效本机化合物。本机命中不访问外部服务；无匹配时使用 PubChem 固定域名请求。
-- PubChem 属性查询取 IUPACName、MolecularFormula、MolecularWeight；再次核对同一 CID 的 CAS 同义词。多个候选需要人工选择。PubChem 同义词匹配不是 CAS 官方认证，来源会明确显示和保存。
+- PubChem 属性查询取 IUPACName、MolecularFormula、MolecularWeight；再次核对同一 CID 的 CAS 同义词。请求完整 SMILES 与 InChIKey，本机 RDKit 解析后核对 InChIKey、分子式，保留立体/同位素/盐信息；通过的 MOL、SMILES、InChIKey 和 SVG 随候选返回，前端预览并在试剂建档时提交 MOL。公开结构不可用或核对失败时保留试剂资料并提示，不关联猜测的结构。多个候选需要人工选择。PubChem 同义词匹配不是 CAS 官方认证，来源会明确显示和保存。
 - 查询只读，500 ms 防抖，旧请求结果不覆盖新输入；失败提示支持重试、本机选择和手动录入。没有资料时不推断名称或分子量。
+- `POST /api/compounds/{id}/structure/cas` 是用户明确点击的旧记录补全入口，带 expected_version；唯一候选及现有分子式、SMILES/InChIKey 身份须一致。复用原 UUID，保留名称/代号/备注/性质/标签/科研关联，通过常规版本检查更新结构及派生资料，原投料不重算；冲突、缺项、多候选或身份不一致不写入。已有结构不覆盖。本机 CAS 精确查询仍只读且本机命中不联网。接口字段核对依据 [PubChem PUG REST](https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest)。
 - 系统名称使用 `compound.name`，原有名称保留为 `codename`；以 CAS 编号，不再生成 CMP 编号。Alembic `b7e1a9302c64` 承接原 `iupac_name` 字段并保留旧资料，详见 [身份规范](compound-identity.md)。替换成不同结构时清理旧系统名称和 CAS。
 - `GET /api/reactions/{id}/components?reactants_only=true` 在数据库查询阶段排除产物，计数与分页一致。省略参数保持旧行为。
 - 投料保存沿用十进制字符串和版本冲突检查；质量/mmol 按 Mw 即时联动，最多保留数据库支持的八位小数；支持 mg、g、kg 和微克质量单位。体积保持手填，不参与质量或 mmol 换算。同一反应优先按勾选的限制反应物确定 1 eq 的 mmol；否则沿用最早保存的有效正数 mmol/eq 作为基准（排除正在编辑的行），输入 eq 立即更新 mmol 和质量；直接修改 mmol 更新 eq 和质量，直接修改质量更新 mmol 及有基准时的 eq，输入操作可替换先前计算值。没有基准时手动填写首组，两项为零或缺失的记录不作为基准。
