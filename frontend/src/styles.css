@@ -382,3 +382,8 @@ td a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .selection-cell input { width: 17px; height: 17px; accent-color: var(--copper); cursor: pointer; }
 .bulk-tag-bar { align-items: center; }
 .bulk-tag-bar label { flex: 1; max-width: 360px; }
+
+.compound-list-table { table-layout: fixed; min-width: 900px; }
+.compound-list-table :is(th, td) { padding-left: 12px; padding-right: 12px; }
+.compound-list-table td { overflow-wrap: anywhere; }
+.compound-list-table .compound-selection-col { width: 44px; }
