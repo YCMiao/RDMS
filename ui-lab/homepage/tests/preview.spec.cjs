@@ -87,7 +87,33 @@ test('five palettes recolor the scene, persist and work with keyboard on narrow 
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `test-results/palette-mobile-${width}.png`, fullPage: true });
   }
-  await page.getByRole('heading', { name: /研究数据/ }).click();
+  await page.mouse.click(600, 180);
   await expect(page.locator('#palette-panel')).toBeHidden();
   expect(errors).toEqual([]);
+});
+
+test('drag rotates the complete disc and releases cleanly without intercepting controls', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await expect(page.locator('#hero-title')).toHaveText('研究数据管理系统');
+  const canvas = page.locator('canvas');
+  await expect(canvas).toHaveAttribute('data-motion', 'paused');
+  const original = await canvas.evaluate(el => el.toDataURL());
+  await page.mouse.move(1050, 480);
+  await page.mouse.down();
+  await page.mouse.move(1200, 570, { steps: 8 });
+  const rotated = await canvas.evaluate(el => el.toDataURL());
+  expect(rotated).not.toBe(original);
+  await page.mouse.up();
+  await page.mouse.move(1000, 400);
+  expect(await canvas.evaluate(el => el.toDataURL())).toBe(rotated);
+  await expect(page.locator('#orbit-control')).not.toHaveClass(/dragging/);
+  await page.keyboard.press('ArrowRight');
+  expect(await canvas.evaluate(el => el.toDataURL())).not.toBe(rotated);
+  await page.getByRole('button', { name: '选择主色调' }).click();
+  await expect(page.getByRole('radio', { name: '青绿', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '切换浅色主题' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.screenshot({ path: 'test-results/dragged-disc.png' });
 });

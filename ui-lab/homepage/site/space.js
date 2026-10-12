@@ -10,7 +10,8 @@ window.createSpaceScene = function (canvas, onAvailability) {
     const get = key => css.getPropertyValue(key).trim();
     palette = { light:document.documentElement.dataset.theme === "light", bg:get("--bg"), glow:get("--scene-glow"), orbit:get("--scene-orbit"), particle:get("--scene-particle"), bright:get("--scene-bright"), warm:get("--scene-warm"), accent:get("--accent") };
   }
-  let pointerX = 0, pointerY = 0, targetX = 0, targetY = 0;
+  const control = document.getElementById("orbit-control");
+  let tilt = .91, spin = -.54, drag = null;
   let seed = 71;
   const random = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
   const points = Array.from({ length: 1550 }, () => ({
@@ -30,10 +31,8 @@ window.createSpaceScene = function (canvas, onAvailability) {
     if (paused || !visible) draw();
   }
   function project(x, y, z, radius, cx, cy) {
-    const tilt = .91 + pointerY * .08;
     const yy = y * Math.cos(tilt) - z * Math.sin(tilt);
     const zz = y * Math.sin(tilt) + z * Math.cos(tilt);
-    const spin = -.54 + pointerX * .07;
     const perspective = 1 + zz * .13;
     return { x: cx + (x * Math.cos(spin) - yy * Math.sin(spin)) * radius * perspective,
       y: cy + (x * Math.sin(spin) + yy * Math.cos(spin)) * radius * perspective, z: zz };
@@ -42,8 +41,8 @@ window.createSpaceScene = function (canvas, onAvailability) {
     if (!width || !height) return;
     const mobile = width < 680;
     const radius = mobile ? Math.min(width * .53, 270) : Math.min(width * .255, height * .44, 450);
-    const cx = width * (mobile ? .61 : .745) + pointerX * 12;
-    const cy = height * (mobile ? .77 : .5) + pointerY * 9;
+    const cx = width * (mobile ? .61 : .745);
+    const cy = height * (mobile ? .77 : .5);
     ctx.fillStyle = palette.bg; ctx.fillRect(0, 0, width, height);
     const glow = ctx.createRadialGradient(cx, cy, radius * .1, cx, cy, radius * 1.5);
     glow.addColorStop(0, `rgba(${palette.glow},.04)`);
@@ -100,7 +99,6 @@ window.createSpaceScene = function (canvas, onAvailability) {
     if (!last || now - last >= 1000 / 30) {
       time += last ? Math.min((now - last) / 1000, .08) : 0;
       last = now;
-      pointerX += (targetX - pointerX) * .06; pointerY += (targetY - pointerY) * .06;
       draw();
     }
     frame = requestAnimationFrame(animate);
@@ -111,15 +109,42 @@ window.createSpaceScene = function (canvas, onAvailability) {
     if (paused) { cancelAnimationFrame(frame); frame = 0; draw(); } else schedule();
     canvas.dataset.motion = paused ? 'paused' : 'running';
   }
-  window.addEventListener('pointermove', event => {
-    if (paused || event.pointerType === 'touch') return;
-    targetX = event.clientX / Math.max(1, width) * 2 - 1;
-    targetY = event.clientY / Math.max(1, height) * 2 - 1;
-  }, { passive: true });
-  document.addEventListener('mouseleave', () => { targetX = targetY = 0; });
+  function endDrag() {
+    if (!drag) return;
+    const id = drag.id;
+    drag = null;
+    control.classList.remove('dragging');
+    if (control.hasPointerCapture(id)) control.releasePointerCapture(id);
+  }
+  function rotate(dx, dy) {
+    spin += dx * .006;
+    tilt = Math.max(.08, Math.min(Math.PI - .08, tilt + dy * .006));
+    draw();
+  }
+  control.addEventListener('pointerdown', event => {
+    if (!event.isPrimary || event.button !== 0 || drag) return;
+    drag = { id:event.pointerId, x:event.clientX, y:event.clientY };
+    control.setPointerCapture(event.pointerId);
+    control.classList.add('dragging');
+    event.preventDefault();
+    control.focus({ preventScroll:true });
+  });
+  control.addEventListener('pointermove', event => {
+    if (!drag || event.pointerId !== drag.id) return;
+    rotate(event.clientX - drag.x, event.clientY - drag.y);
+    drag.x = event.clientX; drag.y = event.clientY;
+  });
+  control.addEventListener('pointerup', endDrag);
+  control.addEventListener('pointercancel', endDrag);
+  control.addEventListener('lostpointercapture', endDrag);
+  window.addEventListener('blur', endDrag);
+  control.addEventListener('keydown', event => {
+    const steps = { ArrowLeft:[-12,0], ArrowRight:[12,0], ArrowUp:[0,-12], ArrowDown:[0,12] };
+    if (steps[event.key]) { event.preventDefault(); rotate(...steps[event.key]); }
+  });
   document.addEventListener('visibilitychange', () => {
     visible = !document.hidden;
-    if (!visible) { cancelAnimationFrame(frame); frame = 0; } else schedule();
+    if (!visible) { endDrag(); cancelAnimationFrame(frame); frame = 0; } else schedule();
   });
   const observer = new ResizeObserver(resize); observer.observe(canvas);
   readPalette(); resize();
