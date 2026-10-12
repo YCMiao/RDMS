@@ -117,3 +117,53 @@ test('drag rotates the complete disc and releases cleanly without intercepting c
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.screenshot({ path: 'test-results/dragged-disc.png' });
 });
+
+test('hover changes the view, while dragging spins within a fixed plane and coasts', async ({ page }) => {
+  await page.clock.install();
+  await page.goto('/');
+  await page.locator('canvas').evaluate(canvas => {
+    const ctx = canvas.getContext('2d');
+    let points = [];
+    const move = ctx.moveTo.bind(ctx), line = ctx.lineTo.bind(ctx), stroke = ctx.stroke.bind(ctx), arc = ctx.arc.bind(ctx);
+    ctx.arc = (x, y, radius, ...args) => {
+      if (radius === 1.8) window.beacon = [x, y];
+      arc(x, y, radius, ...args);
+    };
+    ctx.moveTo = (x, y) => { points = [[x, y]]; move(x, y); };
+    ctx.lineTo = (x, y) => { points.push([x, y]); line(x, y); };
+    ctx.stroke = (...args) => {
+      if (points.length === 201) {
+        window.ringBounds = [Math.min(...points.map(p => p[0])), Math.max(...points.map(p => p[0])), Math.min(...points.map(p => p[1])), Math.max(...points.map(p => p[1]))];
+      }
+      stroke(...args);
+    };
+  });
+  await page.clock.runFor(500);
+  const bounds = () => page.evaluate(() => window.ringBounds);
+  const original = await bounds();
+  await page.mouse.move(1230, 620);
+  await page.clock.runFor(1000);
+  const hovered = await bounds();
+  expect(Math.max(...hovered.map((v, i) => Math.abs(v - original[i])))).toBeGreaterThan(5);
+  await page.mouse.down();
+  await page.mouse.move(1170, 700, { steps: 6 });
+  const dragged = await bounds();
+  // The orbit's projected silhouette stays fixed: this is axial spin, not a tilt.
+  expect(Math.max(...dragged.map((v, i) => Math.abs(v - hovered[i])))).toBeLessThan(1);
+  const canvas = page.locator('canvas');
+  const beforeRelease = await canvas.evaluate(el => el.toDataURL());
+  const beaconBefore = await page.evaluate(() => window.beacon);
+  await page.mouse.up();
+  await page.clock.runFor(200);
+  expect(await canvas.evaluate(el => el.toDataURL())).not.toBe(beforeRelease);
+  const beaconAfter = await page.evaluate(() => window.beacon);
+  const travel = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  const fastTravel = travel(beaconBefore, beaconAfter);
+  expect(fastTravel).toBeGreaterThan(20);
+  await page.clock.runFor(4000);
+  const slowBefore = await page.evaluate(() => window.beacon);
+  await page.clock.runFor(200);
+  expect(travel(slowBefore, await page.evaluate(() => window.beacon))).toBeLessThan(fastTravel / 3);
+  await expect(page.locator('#orbit-control')).not.toHaveClass(/dragging/);
+  await page.screenshot({ path: 'test-results/axial-drag.png' });
+});

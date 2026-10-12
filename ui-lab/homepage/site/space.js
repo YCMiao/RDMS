@@ -11,7 +11,8 @@ window.createSpaceScene = function (canvas, onAvailability) {
     palette = { light:document.documentElement.dataset.theme === "light", bg:get("--bg"), glow:get("--scene-glow"), orbit:get("--scene-orbit"), particle:get("--scene-particle"), bright:get("--scene-bright"), warm:get("--scene-warm"), accent:get("--accent") };
   }
   const control = document.getElementById("orbit-control");
-  let tilt = .91, spin = -.54, drag = null;
+  let tilt = .91, spin = -.54, targetTilt = tilt, targetSpin = spin, drag = null;
+  let rotation = 0, velocity = 0;
   let seed = 71;
   const random = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
   const points = Array.from({ length: 1550 }, () => ({
@@ -31,6 +32,9 @@ window.createSpaceScene = function (canvas, onAvailability) {
     if (paused || !visible) draw();
   }
   function project(x, y, z, radius, cx, cy) {
+    const rotatedX = x * Math.cos(rotation) - y * Math.sin(rotation);
+    y = x * Math.sin(rotation) + y * Math.cos(rotation);
+    x = rotatedX;
     const yy = y * Math.cos(tilt) - z * Math.sin(tilt);
     const zz = y * Math.sin(tilt) + z * Math.cos(tilt);
     const perspective = 1 + zz * .13;
@@ -97,7 +101,15 @@ window.createSpaceScene = function (canvas, onAvailability) {
     frame = 0;
     if (paused || !visible) return;
     if (!last || now - last >= 1000 / 30) {
-      time += last ? Math.min((now - last) / 1000, .08) : 0;
+      const dt = last ? Math.min((now - last) / 1000, .08) : 0;
+      time += dt;
+      if (!drag) {
+        rotation += velocity * dt;
+        velocity *= Math.exp(-2.4 * dt);
+        const ease = 1 - Math.exp(-5 * dt);
+        tilt += (targetTilt - tilt) * ease;
+        spin += (targetSpin - spin) * ease;
+      }
       last = now;
       draw();
     }
@@ -112,18 +124,26 @@ window.createSpaceScene = function (canvas, onAvailability) {
   function endDrag() {
     if (!drag) return;
     const id = drag.id;
+    if (performance.now() - drag.at > 100 || paused) velocity = 0;
     drag = null;
     control.classList.remove('dragging');
     if (control.hasPointerCapture(id)) control.releasePointerCapture(id);
   }
-  function rotate(dx, dy) {
-    spin += dx * .006;
-    tilt = Math.max(.08, Math.min(Math.PI - .08, tilt + dy * .006));
-    draw();
+  // Invert the fixed view to measure a gesture around the disc's own axis.
+  function pointerAngle(event) {
+    const rect = canvas.getBoundingClientRect();
+    const mobile = width < 680;
+    const x = event.clientX - rect.left - width * (mobile ? .61 : .745);
+    const y = event.clientY - rect.top - height * (mobile ? .77 : .5);
+    const localX = x * Math.cos(spin) + y * Math.sin(spin);
+    const localY = (-x * Math.sin(spin) + y * Math.cos(spin)) / Math.cos(tilt);
+    return Math.hypot(localX, localY) < 40 ? null : Math.atan2(localY, localX);
   }
   control.addEventListener('pointerdown', event => {
     if (!event.isPrimary || event.button !== 0 || drag) return;
-    drag = { id:event.pointerId, x:event.clientX, y:event.clientY };
+    drag = { id:event.pointerId, angle:pointerAngle(event), at:event.timeStamp };
+    velocity = 0;
+    targetTilt = tilt; targetSpin = spin;
     control.setPointerCapture(event.pointerId);
     control.classList.add('dragging');
     event.preventDefault();
@@ -131,16 +151,28 @@ window.createSpaceScene = function (canvas, onAvailability) {
   });
   control.addEventListener('pointermove', event => {
     if (!drag || event.pointerId !== drag.id) return;
-    rotate(event.clientX - drag.x, event.clientY - drag.y);
-    drag.x = event.clientX; drag.y = event.clientY;
+    const angle = pointerAngle(event);
+    if (angle !== null && drag.angle !== null) {
+      const delta = Math.atan2(Math.sin(angle - drag.angle), Math.cos(angle - drag.angle));
+      rotation += delta;
+      const dt = Math.max((event.timeStamp - drag.at) / 1000, .016);
+      velocity = Math.max(-4, Math.min(4, delta / dt));
+      draw();
+    }
+    drag.angle = angle; drag.at = event.timeStamp;
+  });
+  window.addEventListener('pointermove', event => {
+    if (drag || event.buttons || event.pointerType === 'touch' || paused) return;
+    targetTilt = .91 + (event.clientY / innerHeight - .5) * .24;
+    targetSpin = -.54 + (event.clientX / innerWidth - .5) * .18;
   });
   control.addEventListener('pointerup', endDrag);
   control.addEventListener('pointercancel', endDrag);
   control.addEventListener('lostpointercapture', endDrag);
   window.addEventListener('blur', endDrag);
   control.addEventListener('keydown', event => {
-    const steps = { ArrowLeft:[-12,0], ArrowRight:[12,0], ArrowUp:[0,-12], ArrowDown:[0,12] };
-    if (steps[event.key]) { event.preventDefault(); rotate(...steps[event.key]); }
+    const steps = { ArrowLeft:-.12, ArrowRight:.12, ArrowUp:-.12, ArrowDown:.12 };
+    if (steps[event.key]) { event.preventDefault(); rotation += steps[event.key]; draw(); }
   });
   document.addEventListener('visibilitychange', () => {
     visible = !document.hidden;
