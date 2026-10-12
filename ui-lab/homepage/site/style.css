@@ -36,7 +36,8 @@
 
 .orbit-control { position:fixed; z-index:0; right:0; top:106px; bottom:0; width:64%; cursor:grab; touch-action:none; user-select:none; border-radius:50%; }
 .orbit-control.dragging { cursor:grabbing; }
-.orbit-control:focus-visible { outline:1px solid var(--accent); outline-offset:-12px; }
+.orbit-control:focus { outline:none; }
+.orbit-control:focus-visible:not(.pointer-focus) { outline:1px solid var(--accent); outline-offset:-12px; }
 .page-shell { position:relative; z-index:1; pointer-events:none; }
 .header, .hero-actions, .skip-link { pointer-events:auto; }
 .scene-unavailable .orbit-control { display:none; }

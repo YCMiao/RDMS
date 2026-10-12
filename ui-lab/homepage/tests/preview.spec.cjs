@@ -102,12 +102,18 @@ test('drag rotates the complete disc and releases cleanly without intercepting c
   await page.mouse.move(1050, 480);
   await page.mouse.down();
   await page.mouse.move(1200, 570, { steps: 8 });
+  await expect(page.locator('#orbit-control')).toHaveCSS('outline-style', 'none');
   const rotated = await canvas.evaluate(el => el.toDataURL());
   expect(rotated).not.toBe(original);
   await page.mouse.up();
   await page.mouse.move(1000, 400);
   expect(await canvas.evaluate(el => el.toDataURL())).toBe(rotated);
   await expect(page.locator('#orbit-control')).not.toHaveClass(/dragging/);
+  await expect(page.locator('#orbit-control')).toHaveCSS('outline-style', 'none');
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.locator('#orbit-control')).toBeFocused();
+  await expect(page.locator('#orbit-control')).toHaveCSS('outline-style', 'solid');
   await page.keyboard.press('ArrowRight');
   expect(await canvas.evaluate(el => el.toDataURL())).not.toBe(rotated);
   await page.getByRole('button', { name: '选择主色调' }).click();

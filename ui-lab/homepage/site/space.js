@@ -145,7 +145,7 @@ window.createSpaceScene = function (canvas, onAvailability) {
     velocity = 0;
     targetTilt = tilt; targetSpin = spin;
     control.setPointerCapture(event.pointerId);
-    control.classList.add('dragging');
+    control.classList.add('dragging', 'pointer-focus');
     event.preventDefault();
     control.focus({ preventScroll:true });
   });
@@ -170,6 +170,7 @@ window.createSpaceScene = function (canvas, onAvailability) {
   control.addEventListener('pointercancel', endDrag);
   control.addEventListener('lostpointercapture', endDrag);
   window.addEventListener('blur', endDrag);
+  window.addEventListener('keydown', () => control.classList.remove('pointer-focus'));
   control.addEventListener('keydown', event => {
     const steps = { ArrowLeft:-.12, ArrowRight:.12, ArrowUp:-.12, ArrowDown:.12 };
     if (steps[event.key]) { event.preventDefault(); rotation += steps[event.key]; draw(); }

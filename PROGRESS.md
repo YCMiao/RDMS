@@ -619,3 +619,8 @@
 
 - 修改前提交 `67049be`。删除圆盘旁 FIELD / 001、探索的轨迹及引导横线，清理对应样式；标签页标题统一为 RDMS · 科研数据管理。正式界面未改动。
 - 隔离预览 6 项通过；完整 `scripts/check.sh all` 缓存模式退出 0，后端 63、前端 38、浏览器 21 项通过。日志 `/tmp/rdms-caption-preview.log`、`/tmp/rdms-caption-regression.log`。
+
+### 2026-10-12 隔离首页：鼠标拖拽焦点外圈
+
+- 修改前提交 `ae503bd`。鼠标点击及松开后抑制圆盘交互区焦点边框，键盘操作恢复焦点提示，粒子轨道不变。
+- 预览 6 项通过，新增拖拽期间及结束后无轮廓、Tab 返回仍有焦点提示的断言；截图已确认外圈消失。完整隔离检查退出 0。日志 `/tmp/rdms-focus-preview.log`、`/tmp/rdms-focus-regression.log`。
