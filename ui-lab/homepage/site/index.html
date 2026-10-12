@@ -15,7 +15,7 @@
   <div class="scene" aria-hidden="true"><canvas id="space"></canvas><div class="scene-vignette"></div></div>
   <div class="page-shell">
     <header class="header">
-      <a class="brand" href="./" aria-label="RDMS 首页"><img src="./mark.svg" alt="" width="34" height="34"><span>RDMS<span class="brand-divider"></span><small>研究数据管理</small></span></a>
+      <a class="brand" href="./" aria-label="RDMS 首页"><svg class="brand-symbol" viewBox="0 0 40 40" fill="none" aria-hidden="true"><circle cx="20" cy="20" r="17" stroke="currentColor" opacity=".4"/><ellipse cx="20" cy="20" rx="15" ry="6" transform="rotate(-40 20 20)" stroke="currentColor" stroke-width="1.3"/><circle cx="20" cy="20" r="3" fill="currentColor"/><circle cx="30.3" cy="10.7" r="2" fill="currentColor"/></svg><span>RDMS<span class="brand-divider"></span><small>研究数据管理</small></span></a>
       <nav class="main-nav" aria-label="主导航">
         <a href="http://127.0.0.1:8080/experiments" target="_blank" rel="noopener" aria-label="实验（新标签页）">实验</a>
         <a href="http://127.0.0.1:8080/compounds" target="_blank" rel="noopener" aria-label="化合物（新标签页）">化合物</a>
@@ -23,6 +23,18 @@
         <a href="http://127.0.0.1:8080/files" target="_blank" rel="noopener" aria-label="文件（新标签页）">文件</a>
       </nav>
       <div class="header-tools">
+        <div class="palette-picker">
+          <button class="icon-button" id="palette-toggle" aria-label="选择主色调" aria-expanded="false" aria-controls="palette-panel" title="主色调"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1.5-3.3 1.6 1.6 0 0 1 1.2-2.7H18a3 3 0 0 0 3-3 9 9 0 0 0-9-9Z"/><circle cx="7" cy="10" r=".8"/><circle cx="10" cy="6.7" r=".8"/><circle cx="14.4" cy="6.8" r=".8"/><circle cx="17.4" cy="10" r=".8"/></svg></button>
+          <div id="palette-panel" class="palette-panel" hidden>
+            <fieldset><legend>主色调</legend><div class="palette-options">
+              <label class="palette-option"><input type="radio" name="palette" value="teal" checked><span class="swatch swatch-teal" aria-hidden="true"></span><span>青绿</span></label>
+              <label class="palette-option"><input type="radio" name="palette" value="indigo"><span class="swatch swatch-indigo" aria-hidden="true"></span><span>靛蓝</span></label>
+              <label class="palette-option"><input type="radio" name="palette" value="violet"><span class="swatch swatch-violet" aria-hidden="true"></span><span>紫罗兰</span></label>
+              <label class="palette-option"><input type="radio" name="palette" value="amber"><span class="swatch swatch-amber" aria-hidden="true"></span><span>琥珀</span></label>
+              <label class="palette-option"><input type="radio" name="palette" value="rose"><span class="swatch swatch-rose" aria-hidden="true"></span><span>玫瑰</span></label>
+            </div></fieldset>
+          </div>
+        </div>
         <button class="icon-button" id="theme-toggle" aria-label="切换浅色主题" title="切换主题"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button>
         <a class="icon-button" href="http://127.0.0.1:8080/settings" target="_blank" rel="noopener" aria-label="设置（新标签页）" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2.5" fill="var(--bg)"/><circle cx="15" cy="17" r="2.5" fill="var(--bg)"/></svg></a>
       </div>

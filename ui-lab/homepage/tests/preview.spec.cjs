@@ -47,3 +47,46 @@ test('static-only server rejects writes and invalid hosts', async ({ request }) 
   expect((await request.post('/', { data: 'no writes' })).status()).toBe(405);
   expect((await request.get('/', { headers: { Host: 'untrusted.example' } })).status()).toBe(403);
 });
+
+test('five palettes recolor the scene, persist and work with keyboard on narrow screens', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await page.getByRole('button', { name: '选择主色调' }).click();
+  const colors = [['teal', '青绿'], ['indigo', '靛蓝'], ['violet', '紫罗兰'], ['amber', '琥珀'], ['rose', '玫瑰']];
+  let previous;
+  for (const [key, name] of colors) {
+    await page.getByRole('radio', { name, exact: true }).check();
+    await expect(page.locator('html')).toHaveAttribute('data-palette', key);
+    const canvas = await page.locator('canvas').evaluate(el => el.toDataURL());
+    if (previous) expect(canvas).not.toBe(previous);
+    previous = canvas;
+    await expect(page.locator('canvas')).toHaveAttribute('data-motion', 'paused');
+    await page.screenshot({ path: `test-results/palette-${key}-dark.png` });
+  }
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: '选择主色调' })).toBeFocused();
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-palette', 'rose');
+  await page.getByRole('button', { name: '切换浅色主题' }).click();
+  await page.getByRole('button', { name: '选择主色调' }).click();
+  for (const [key, name] of colors) {
+    await page.getByRole('radio', { name, exact: true }).check();
+    await expect(page.locator('html')).toHaveAttribute('data-palette', key);
+    await page.screenshot({ path: `test-results/palette-${key}-light.png` });
+  }
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.getByRole('radio', { name: '琥珀', exact: true })).toBeChecked();
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    const bounds = await page.locator('#palette-panel').boundingBox();
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `test-results/palette-mobile-${width}.png`, fullPage: true });
+  }
+  await page.getByRole('heading', { name: /研究数据/ }).click();
+  await expect(page.locator('#palette-panel')).toBeHidden();
+  expect(errors).toEqual([]);
+});

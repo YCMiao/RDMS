@@ -3,7 +3,13 @@ window.createSpaceScene = function (canvas, onAvailability) {
   const ctx = canvas.getContext('2d', { alpha: false });
   if (!ctx) { onAvailability(false); return null; }
   let width = 0, height = 0, ratio = 1, time = 0, last = 0, frame = 0;
-  let paused = false, light = false, visible = !document.hidden;
+  let paused = false, visible = !document.hidden;
+  let palette;
+  function readPalette() {
+    const css = getComputedStyle(document.documentElement);
+    const get = key => css.getPropertyValue(key).trim();
+    palette = { bg:get("--bg"), glow:get("--scene-glow"), orbit:get("--scene-orbit"), particle:get("--scene-particle"), bright:get("--scene-bright"), warm:get("--scene-warm"), accent:get("--accent") };
+  }
   let pointerX = 0, pointerY = 0, targetX = 0, targetY = 0;
   let seed = 71;
   const random = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
@@ -38,15 +44,15 @@ window.createSpaceScene = function (canvas, onAvailability) {
     const radius = mobile ? Math.min(width * .53, 270) : Math.min(width * .255, height * .44, 450);
     const cx = width * (mobile ? .61 : .745) + pointerX * 12;
     const cy = height * (mobile ? .77 : .5) + pointerY * 9;
-    ctx.fillStyle = light ? '#edf3f0' : '#091412'; ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = palette.bg; ctx.fillRect(0, 0, width, height);
     const glow = ctx.createRadialGradient(cx, cy, radius * .1, cx, cy, radius * 1.5);
-    glow.addColorStop(0, light ? 'rgba(76,148,133,0)' : 'rgba(27,99,78,.04)');
-    glow.addColorStop(.5, light ? 'rgba(103,176,157,.13)' : 'rgba(30,105,91,.13)');
-    glow.addColorStop(1, 'rgba(30,105,91,0)');
+    glow.addColorStop(0, `rgba(${palette.glow},.04)`);
+    glow.addColorStop(.5, `rgba(${palette.glow},.13)`);
+    glow.addColorStop(1, `rgba(${palette.glow},0)`);
     ctx.fillStyle = glow; ctx.fillRect(0, 0, width, height);
     for (const star of stars) {
       const opacity = .14 + (Math.sin(time * .22 + star.phase) + 1) * .06;
-      ctx.fillStyle = light ? `rgba(39,108,90,${opacity})` : `rgba(152,211,188,${opacity})`;
+      ctx.fillStyle = `rgba(${palette.orbit},${opacity})`;
       ctx.beginPath(); ctx.arc(star.x * width, star.y * height, star.size, 0, Math.PI * 2); ctx.fill();
     }
     // Fine orbit paths anchor the cloud without a busy network of lines.
@@ -57,7 +63,7 @@ window.createSpaceScene = function (canvas, onAvailability) {
         const p = project(Math.cos(a) * ring, Math.sin(a) * ring, 0, radius, cx, cy);
         if (!step) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
       }
-      ctx.strokeStyle = light ? 'rgba(50,114,94,.13)' : 'rgba(112,189,165,.13)';
+      ctx.strokeStyle = `rgba(${palette.orbit},.13)`;
       ctx.lineWidth = .65; ctx.stroke();
     }
     const projected = [];
@@ -74,9 +80,7 @@ window.createSpaceScene = function (canvas, onAvailability) {
       const depth = (z + 1.4) / 2.8;
       const opacity = (.15 + depth * .72) * point.brightness;
       const size = point.size * (.65 + depth * .7) * (mobile ? .9 : 1);
-      let rgb;
-      if (light) rgb = point.color > .92 ? '136,111,54' : point.color > .55 ? '29,102,84' : '58,137,130';
-      else rgb = point.color > .92 ? '228,207,153' : point.color > .55 ? '193,235,211' : '94,195,188';
+      const rgb = point.color > .92 ? palette.warm : point.color > .55 ? palette.bright : palette.particle;
       if (point.size > 1.12 && z > .15) {
         ctx.fillStyle = `rgba(${rgb},${opacity * .1})`; ctx.beginPath(); ctx.arc(x, y, size * 3.8, 0, Math.PI * 2); ctx.fill();
       }
@@ -85,9 +89,9 @@ window.createSpaceScene = function (canvas, onAvailability) {
     // One small moving highlight gives the eye a calm point to follow.
     const a = time * .095 + .32;
     const beacon = project(Math.cos(a) * 1.38, Math.sin(a) * 1.38, 0, radius, cx, cy);
-    ctx.strokeStyle = light ? 'rgba(33,103,85,.28)' : 'rgba(153,223,192,.28)';
+    ctx.strokeStyle = `rgba(${palette.orbit},.28)`;
     ctx.lineWidth = .8; ctx.beginPath(); ctx.arc(beacon.x, beacon.y, 6, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = light ? '#347f69' : '#c4f0d9';ctx.beginPath();ctx.arc(beacon.x, beacon.y, 1.8, 0, Math.PI * 2);ctx.fill();
+    ctx.fillStyle = palette.accent;ctx.beginPath();ctx.arc(beacon.x, beacon.y, 1.8, 0, Math.PI * 2);ctx.fill();
   }
   function animate(now) {
     frame = 0;
@@ -117,6 +121,6 @@ window.createSpaceScene = function (canvas, onAvailability) {
     if (!visible) { cancelAnimationFrame(frame); frame = 0; } else schedule();
   });
   const observer = new ResizeObserver(resize); observer.observe(canvas);
-  resize();
-  return { setPaused, setTheme(value) { light = value === 'light'; draw(); } };
+  readPalette(); resize();
+  return { setPaused, setAppearance() { readPalette(); draw(); } };
 };
