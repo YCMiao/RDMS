@@ -284,7 +284,7 @@ test("两种桌面尺寸和主题、空状态与键盘焦点", async ({ page }) 
   }
   await page.goto("/search")
   await expect(page.getByText("输入关键词开始搜索。")).toBeVisible()
-  await page.route("**/api/dashboard", route => route.abort())
+  await page.route("**/api/health/ready", route => route.abort())
   await page.goto("/")
   await expect(page.getByRole("alert")).toBeVisible()
 })

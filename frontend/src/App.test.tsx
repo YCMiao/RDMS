@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import App from "./App"
 
+vi.mock("./features/home/space-scene", () => ({ createSpaceScene: () => null }))
+
 describe("application shell", () => {
   afterEach(() => vi.restoreAllMocks())
 
@@ -21,7 +23,10 @@ describe("application shell", () => {
     )
 
     expect(screen.getByRole("navigation", { name: "主导航" })).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByRole("heading", { name: "最近实验" })).toBeInTheDocument())
+    expect(screen.getByRole("heading", { name: /研究数据\s*管理系统/ })).toBeInTheDocument()
+    await waitFor(() => expect(fetch).toHaveBeenCalled())
+    expect(screen.getByRole("link", { name: "进入实验室" })).not.toHaveAttribute("target")
+    expect(screen.queryByRole("heading", { name: "最近实验" })).not.toBeInTheDocument()
     expect(screen.queryByText("系统状态")).not.toBeInTheDocument()
     expect(screen.queryByText("查看 API 文档")).not.toBeInTheDocument()
     expect(screen.queryByRole("alert")).not.toBeInTheDocument()
