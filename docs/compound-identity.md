@@ -7,7 +7,9 @@
 - Alembic `b7e1a9302c64` 将原 `name` 保留为 `codename`，原 `iupac_name` 改为 `name`；旧 CMP 值只在内部归档列保留，不再通过 API 或界面提供，也不再分配。UUID 及实验、反应、样品关联不变。
 - CAS 保持原有可空、非唯一字段语义，不合并记录。新建或修改时校验 CAS 格式和校验位；不同结构替换会清除旧名称与身份资料。实验与样品编号规则不变。
 
-## 现有七条记录的联网核验
+## 2026-10-01 七条记录的历史联网核验
+
+以下记录是当时的资料维护证据，不代表当前数据库数量或接口可用性。本次工程审计未重新联网查询或修改科研资料。
 
 5 条名称来自 PubChem 精确 InChIKey 匹配；2 条由保存结构推导系统名称，再经 EMBL-EBI OPSIN 反向解析，比对完整标准 InChIKey 一致。这两条不声称是注册机构的首选名称。四个已录入 CAS 均与对应精确 CID 的同义词相符；盐酸盐身份保持。
 
@@ -21,7 +23,7 @@
 | NH₂-4C-FP | 2162120-73-0 | 4-(4-aminobutylamino)-2-(2,6-dioxopiperidin-3-yl)isoindole-1,3-dione;hydrochloride | PubChem |
 | 4-FP | 835616-60-9 | 2-(2,6-dioxopiperidin-3-yl)-4-fluoroisoindole-1,3-dione | PubChem |
 
-使用本机当前配置额外请求 CAS Common Chemistry 时，三条查询均返回密钥被拒绝（认证或权限问题）。未改动密钥；这条官方检索路径当前不可用。
+使用本机当前配置额外请求 CAS Common Chemistry 时，三条查询均返回密钥被拒绝（认证或权限问题）。未改动密钥；这条官方检索路径在该次核验时不可用。
 
 三个 CAS 缺项分别是 Ester-6-HF、Acid-6-HF、6HF-4C-FP。检索覆盖 PubChem、NIH/NCI Cactus，以及精确结构键、系统名称、代号与相关文献；未找到并不证明未分配 CAS。Acid-6-HF 已有 PubChem CID 1695613，原始论文 CD-9 也记载其名称与分子式，但这些来源未给出 CAS。
 

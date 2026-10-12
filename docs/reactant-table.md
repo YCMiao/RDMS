@@ -2,9 +2,9 @@
 
 ## 展示与交互
 
-一个实验保留多个独立反应。每个反应按“反应总览 → 反应物与投料 → 产物与收率 → 条件与处理”排列；默认显示总览和投料表，新增和编辑共用按需展开的录入区。表头固定为名称（系统命名）、化学式、CAS、Mw (g/mol)、eq、mmol、mg、mL，投料表不要求结构式；产物与收率在独立区域录入。反应总览保留底物与产物结构图、辅助试剂、反应条件及已有收率；没有结构时显示名称和已有化学式。总览读取全部组分，不受投料表分页或产物过滤影响，新增与编辑投料后自动刷新。已有 product 记录会显示在产物表并可编辑，原 API、摘要与回收站继续读取。产物录入复用组分 API 的 product 角色，保存后同步刷新总览；不会参与反应物 eq 基准，也不自动创建样品。产物计量比默认 1；选择限制反应物后，填写产物质量自动计算收率，保留手动填写入口。
+一个实验保留多个独立反应。每个反应按“反应总览 → 反应物与投料 → 产物与收率 → 溶剂 → 条件与处理”排列；默认显示总览和投料表，新增和编辑共用按需展开的录入区。表头固定为名称（系统命名）、化学式、CAS、Mw (g/mol)、eq、mmol、mg、mL，投料表不要求结构式；产物与收率在独立区域录入。反应总览保留底物与产物结构图、辅助试剂、反应条件及已有收率；没有结构时显示名称和已有化学式。总览读取全部组分，不受投料表分页或产物过滤影响，新增与编辑投料后自动刷新。已有 product 记录会显示在产物表并可编辑，原 API、摘要与回收站继续读取。产物录入复用组分 API 的 product 角色，保存后同步刷新总览；不会参与反应物 eq 基准，也不自动创建样品。产物计量比默认 1；选择限制反应物后，填写产物质量自动计算收率，保留手动填写入口。
 
-参考 Revvity 官方的 [Reactants table 说明](https://support.revvitysignals.com/hc/en-us/articles/21175049180308-Learn-about-the-Reactants-table-of-the-Stoichiometry-grid-in-Signals) 中按试剂行组织身份和计量数据的形式。本次只实现本机个人记录需要的投料表，不包含库存、限量试剂联动或计划投料列。
+参考 Revvity 官方的 [Reactants table 说明](https://support.revvitysignals.com/hc/en-us/articles/21175049180308-Learn-about-the-Reactants-table-of-the-Stoichiometry-grid-in-Signals) 中按试剂行组织身份和计量数据的形式。本次只实现本机个人记录需要的投料表，不包含库存或计划投料列；限制反应物与自动收率规则见下文。
 
 ## 查询与数据
 
@@ -13,7 +13,7 @@
 - 查询只读，500 ms 防抖，旧请求结果不覆盖新输入；失败提示支持重试、本机选择和手动录入。没有资料时不推断名称或分子量。
 - `POST /api/compounds/{id}/structure/cas` 是用户明确点击的旧记录补全入口，带 expected_version；唯一候选及现有分子式、SMILES/InChIKey 身份须一致。复用原 UUID，保留名称/代号/备注/性质/标签/科研关联，通过常规版本检查更新结构及派生资料，原投料不重算；冲突、缺项、多候选或身份不一致不写入。已有结构不覆盖。本机 CAS 精确查询仍只读且本机命中不联网。接口字段核对依据 [PubChem PUG REST](https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest)。
 - 系统名称使用 `compound.name`，原有名称保留为 `codename`；以 CAS 编号，不再生成 CMP 编号。Alembic `b7e1a9302c64` 承接原 `iupac_name` 字段并保留旧资料，详见 [身份规范](compound-identity.md)。替换成不同结构时清理旧系统名称和 CAS。
-- `GET /api/reactions/{id}/components?reactants_only=true` 在数据库查询阶段排除产物，计数与分页一致。省略参数保持旧行为。
+- `GET /api/reactions/{id}/components?reactants_only=true&exclude_solvents=true` 在数据库查询阶段排除产物和溶剂；溶剂区使用 `solvents_only=true`，计数与分页一致。省略参数保持旧行为。
 - 投料保存沿用十进制字符串和版本冲突检查；质量/mmol 按 Mw 即时联动，最多保留数据库支持的八位小数；支持 mg、g、kg 和微克质量单位。体积保持手填，不参与质量或 mmol 换算。同一反应优先按勾选的限制反应物确定 1 eq 的 mmol；否则沿用最早保存的有效正数 mmol/eq 作为基准（排除正在编辑的行），输入 eq 立即更新 mmol 和质量；直接修改 mmol 更新 eq 和质量，直接修改质量更新 mmol 及有基准时的 eq，输入操作可替换先前计算值。没有基准时手动填写首组，两项为零或缺失的记录不作为基准。
 
 ## 验证位置

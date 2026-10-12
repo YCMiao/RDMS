@@ -19,7 +19,7 @@ frontend 为构建后的静态资源与同源代理服务。backend 和 db 仅�
 
 ## 依赖与运行基线
 
-采用原文推荐技术栈。阶段 01 已验证并锁定容器基线为 Python 3.12.11、Node.js 22.20.0、PostgreSQL 17.6、nginx 1.29.1；前端提交 npm lockfile，Python 依赖使用精确版本清单，镜像使用明确补丁标签。前端安全更新后的 lockfile 由 npm 11 生成，并已由 Node 22 镜像自带的 npm 10 通过 `npm ci`、测试和生产构建验证可重复消费。依赖新增前写清用途，不因方便加入新的数据库、队列或服务。
+采用原文推荐技术栈。阶段 01 已验证并锁定容器基线为 Python 3.12.11、Node.js 22.20.0、PostgreSQL 17.6、nginx 1.29.1；前端提交 npm lockfile，Python 直接依赖使用精确版本清单（传递依赖尚未完整锁定），镜像使用明确补丁标签。前端安全更新后的 lockfile 由 npm 11 生成，并已由 Node 22 镜像自带的 npm 10 通过 `npm ci`、测试和生产构建验证可重复消费。依赖新增前写清用途，不因方便加入新的数据库、队列或服务。
 
 补充依赖职责：SQLAlchemy 同步 Session 配合 psycopg；Pydantic Settings 管理环境配置；python-multipart 支持文件上传；pytest/httpx 做后端测试；Ruff 与 mypy 做后端静态检查；ESLint、TypeScript、Vitest、Testing Library 做前端检查；Playwright 做核心浏览器验收；openapi-typescript 生成接口类型。前端用 React Router 和 TanStack Query 管理路由及服务端状态。不得把密码、上传数据或真实实验夹具提交到版本库。
 
@@ -29,10 +29,10 @@ frontend 为构建后的静态资源与同源代理服务。backend 和 db 仅�
 
 ```text
 RDMS/
-  PLAN.md / PROGRESS.md / BLOCKED.md
+  PROGRESS.md / BLOCKED.md
   README.md / .env.example / .gitignore
   docker-compose.yml / docker-compose.e2e.yml
-  docs/                       设计、验收与分阶段任务书
+  docs/                       现役设计、运维与验收
   backend/
     app/
       api/                    路由、参数、依赖、响应映射
@@ -52,6 +52,8 @@ RDMS/
   data/                       运行数据，不入版本库
 ```
 
+后端 Dockerfile 的 `base` 安装运行依赖；`test` 增加检查工具与测试文件；默认最终 `runtime` 阶段只复制 app、alembic 和配置，以非 root 用户运行。Compose 的 backend-test 显式选择 test；迁移及 E2E 后端使用 runtime，确保验收覆盖正式镜像。
+
 service 拥有事务边界；repository 不自行 commit。跨实体操作必须在同一事务中检查父记录、版本及引用约束。路由不直接拼 SQL，不散落重复业务规则。前端页面负责布局，feature 承载业务交互，共享组件不依赖具体页面。不要为了分层为每个简单字段创建抽象接口，也不要把所有业务放进巨型 service。
 
 ## 配置与公开接口
@@ -66,9 +68,9 @@ service 拥有事务边界；repository 不自行 commit。跨实体操作必须
 |---|---|---|
 | 实验和化合物并非总有反应关系 | 增加显式关联表，查询与样品/反应关系取并集 | 不会丢失非反应实验的关联 |
 | 一个实验可能包含多次反应 | Experiment 一对多 Reaction | 界面使用反应列表而非单一字段 |
-| 原文收率示例没有对应字段 | 增加 product 的 yield_percent | 只保存手工值，不宣称自动计算 |
+| 产物收率 | product 保存 yield_percent、stoichiometric_ratio，反应物可标记 is_limiting | 支持质量与计量比自动计算及手动值，规则见 reactant-table.md |
 | 样品可能是混合物 | compound_id 可空，experiment_id 必填 | 单一化合物字段不伪装为完整组成表 |
-| SMILES 文本不等于结构标准化 | 原样文本检索，不做化学等价判断 | 同一结构可以有不同字符串 |
+| 化学结构与身份 | RDKit 本机解析结构并生成 InChIKey；文本搜索仍为子串匹配 | 同结构提示不自动合并，CAS 与实验性质需核对来源 |
 | 数据库与文件不能共享原子事务 | 临时文件、原子发布、失败补偿与只读检查 | 异常后可能存在待人工处理的孤立文件 |
 | 软删除容易误恢复子记录 | 子记录自身删除状态与父可见性分离 | 恢复父记录不复活单独删除的内容 |
 | 无登录有明确环境限制 | 只绑定回环地址并检查来源 | 不直接适配实验室共享部署 |
@@ -77,7 +79,7 @@ service 拥有事务边界；repository 不自行 commit。跨实体操作必须
 
 ## 后续扩展
 
-未来化学结构计算、谱图解析、文献检索以独立业务模块接入，复用实体 ID 和 FileAsset。不预建插件框架、向量库、任务队列或空接口。长任务、数据版本、审计、多用户在明确需求后另做迁移。原始文件始终不可原地覆盖；未来处理结果应另建文件并记录来源。
+已实现 RDKit 结构解析、描绘与派生值计算。未来谱图解析、文献检索以独立业务模块接入，复用实体 ID 和 FileAsset。不预建插件框架、向量库、任务队列或空接口。长任务、数据版本、审计、多用户在明确需求后另做迁移。原始文件始终不可原地覆盖；未来处理结果应另建文件并记录来源。
 
 ## 阶段 02 实施记录
 

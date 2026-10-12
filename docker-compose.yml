@@ -81,6 +81,7 @@ services:
   backend-test:
     build:
       context: ./backend
+      target: test
     profiles: ["test"]
     environment:
       DATABASE_URL: postgresql+psycopg://rdms_test:rdms_test_only@db-test:5432/rdms_test

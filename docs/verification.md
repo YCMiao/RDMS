@@ -1,15 +1,15 @@
-# 最终验收索引（更新于 2026-10-01）
+# 验收索引（更新于 2026-10-12）
 
-所有表内“通过”均有实测记录。2026-09-30 最新 `scripts/check.sh all` 退出码 0：Ruff、mypy、独立 PostgreSQL pytest 32 项；ESLint、TypeScript、Vitest 20 项与生产构建；独立 PostgreSQL/上传临时文件系统上的 Playwright 6 项。阶段历史与后续变更实测见 [PROGRESS.md](../PROGRESS.md)。
+当前检查入口：`RDMS_CHECK_CACHED_DEPS=1 scripts/check.sh all`。2026-10-12 本次最终实测退出 0：后端 PostgreSQL 63 项、前端 38 项及检查/构建、隔离浏览器 23 项；npm 安装审计 0 vulnerabilities。结果与边界见 [PROGRESS](../PROGRESS.md) 与 [审计报告](release-audit.md)。下表保留功能证据索引，历史日期不作为当前上线状态。
 
 | 验收 ID | 实测证据 |
 |---|---|
-| ENV-01 | 阶段 00：Docker 29.8.0、Compose v5.5.1、引擎、端口与磁盘实测，见 PROGRESS 阶段 00。 |
+| ENV-01 | 阶段 00：Docker 29.8.0、Compose v5.5.1、引擎、端口与磁盘实测，见 Git 历史 PROGRESS 阶段 00（检索方式在当前 PROGRESS）。 |
 | BOOT-01 | 阶段 01；阶段 08 另用 `rdms08fresh` 从空 PostgreSQL 卷迁移到 `9dd700ef716a`，db/backend 健康、frontend 运行。 |
 | CHECK-01 | 阶段 01 故意失败断言使入口非零，移除后通过；最终 `scripts/check.sh all` 退出 0。 |
 | DB-01 | `backend/tests/test_stage02_data.py` 的 schema/非法关系检查；每次 backend 检查从空 tmpfs PostgreSQL 迁移。 |
 | NUM-01 | `test_fifty_independent_transactions_and_committed_number_not_reused`：50 个独立事务并发创建。 |
-| NUM-02 | `test_calendar_year_timezone_width_and_rollback`：跨年、宽度、回滚及日期更新。 |
+| NUM-02 | `test_calendar_year_timezone_width_and_rollback` 与 `test_notebook_concurrent_numbers_cross_year_and_large_width`：旧编号兼容、记录本跨年连续、宽度、回滚及日期更新。 |
 | CAS-CREATE-01 | `frontend/e2e/workflow.spec.ts` 验证化合物列表 CAS 入口顺序、无效编号、查询失败重试、多候选显式选择、结构与来源保存、本机匹配不重复创建，以及居中弹窗桌面/窄屏边界。实验 CAS 流程复用同一查询/预览与建档函数，并由原单元/浏览器流程回归验证。 |
 | NAV-01 | `backend/tests/test_record_neighbors.py` 验证相邻实验/化合物与列表的排序、筛选、本内范围、回收站排除一致；`frontend/e2e/workflow.spec.ts` 验证跨页切换、首尾禁用、表单重载、未保存保护、返回筛选列表及窄屏无溢出。 |
 | CRUD-01 | `backend/tests/test_stage03_records.py` 的 CRUD、标签失败原子性。 |
@@ -36,7 +36,7 @@
 | UI-01 | 同文件检查 1280×800、1440×900、浅/深色实验表格及按钮对比、长标题/SMILES 无页面横向溢出、中文文件名、键盘焦点、空搜索、网络失败和 409 提示；截图在 `frontend/test-results/`。 |
 | DOC-01 | README 含配置、启动、全套检查及备份/恢复；`rdms08fresh` 用独立空卷和目录按步骤启动、停止/重启并实测记录及文件哈希。 |
 | LOCAL-01 | `backend/tests/test_local_request_boundary.py` 验证非本机 Host 和跨站写入返回 403、无数据库写入，同源浏览器请求和无 Origin 本机命令行请求可用；部署后实测 `/api/health/ready` 为 200，跨站写入为 403。 |
-| CHEM-01 | `backend/tests/test_compound_chemistry.py` 验证结构解析、派生值重算、重复检测、CAS 搜索及显式查询；`frontend/e2e/workflow.spec.ts` 在隔离浏览器中完成结构建档与重复提示。2026-09-24 `scripts/check.sh all` 退出 0：后端 29 项、前端 10 项、Playwright 4 项。默认服务迁移到 `3a4d8c1e6f20` 后健康；公开乙醇 InChIKey 实测 PubChem 返回 CID 702、CAS 候选及密度原文。CAS Common Chemistry 真密钥未配置，尚未做带密钥实测。 |
+| CHEM-01 | `backend/tests/test_compound_chemistry.py` 验证结构解析、派生值重算、重复检测、CAS 搜索及显式查询；`frontend/e2e/workflow.spec.ts` 在隔离浏览器中完成结构建档与重复提示。2026-09-24 `scripts/check.sh all` 退出 0：后端 29 项、前端 10 项、Playwright 4 项。默认服务迁移到 `3a4d8c1e6f20` 后健康；公开乙醇 InChIKey 实测 PubChem 返回 CID 702、CAS 候选及密度原文。此行为 2026-09-24 历史证据；后续凭据限制见 BLOCKED.md。 |
 | EXP-01 | `backend/tests/test_stage04_lab.py` 验证反应后处理和纯化创建、更新、清空；`test_stage06_discovery.py` 验证摘要包含这两个字段；`frontend/e2e/workflow.spec.ts` 验证结构图、当量、条件及后处理在实验详情出现。最近一次 `scripts/check.sh all` 退出码 0；默认库迁移到 `6b4f2c9e1d07` 后健康，实验、化合物、反应记录数仍为 0。 |
 | MASS-01 | `frontend/src/lib/format-mass.test.ts` 验证分子量最多 2 位、精确质量最多 4 位且不补尾零；`frontend/src/features/records.test.tsx` 验证仅编辑名称时原始分子量不被显示值覆盖；`frontend/e2e/workflow.spec.ts` 验证结构预览、详情和列表显示。 |
 | DOSE-01 | `backend/tests/test_compound_chemistry.py` 验证 CAS 校验、本机精确只读匹配、系统名称保存/搜索、PubChem CID 同义词核对和离线返回；`test_stage04_lab.py` 验证反应物分页过滤及历史产物保留。`frontend/src/features/reactant-editor.test.tsx` 验证请求竞态、候选选择、保存失败保留输入和复用已建试剂。`frontend/e2e/workflow.spec.ts` 完成 CAS 添加 → mg/mmol 补全 → 改为 mL → 刷新核对原始精度，并检查投料表顺序、多反应、按需展开和窄屏布局；总览恢复后的截图 `frontend/test-results/reaction-overview-and-table.png` 已目视核对。公开乙醇 `64-17-5` 只读网络实测返回 ethanol、C2H6O、46.07 和来源 CID 702。 |
@@ -45,22 +45,9 @@
 
 隔离目标均只含合成数据；默认本机应用项目的数据库卷和上传根未用于验收写入。原始 `prompt0922.docx` SHA256 为 `711adf58248533f75ff40375fcc5374b71732073a143ac1cd44e6079ced10be9`。
 
-2026-10-10 eq/mmol 自动换算：隔离后端 34 项、前端 21 项及检查/构建、浏览器 7 项通过。浏览器验证按 2 mmol/eq 换算并保存刷新；完整入口因 npm 安装网络中断后分项补验，详情及日志见 PROGRESS。
 
-2026-10-10 实验复制：后端隔离 PostgreSQL 36 项，前端 21 项与 lint/类型/构建，隔离浏览器 8 项通过；新增测试验证独立草稿、精度与关联保留、历史结果排除及原实验未变，故障注入验证全部回滚。完整入口因旧 npm 依赖目录中断后分项补验，详见 PROGRESS。
+## 后续功能与历史证据
 
-2026-10-10 产物入口：隔离后端 36 项、前端 22 项与检查/构建、浏览器 9 项通过。新增 UI 验证产物新增、编辑、完整精度与 0% 收率、刷新、删除、恢复、总览同步和窄屏；完整入口网络中断后用已检查依赖离线补验，详见 PROGRESS。
+当前完整检查覆盖记录本、实验复制、统一备注、温度/时间模式、反应顺序、限制反应物与自动收率、溶剂分区、CAS 建档与补全、批量标签、相邻导航，以及粒子首页与全局外观。测试位置为 `backend/tests/`、`frontend/src/**/*.test.*`、`frontend/e2e/`。
 
-2026-10-10 反应条件保存反馈：后端隔离 PostgreSQL 36 项、前端 23 项及检查/构建、隔离浏览器 10 项通过。验证字段校验失败后就地提示并保留输入、修正后保存、条件/处理重访完整保留、多反应互不覆盖、8 位小数与零值；完整入口因浏览器依赖执行权限中断后使用已检查依赖补验，详见 PROGRESS。
-
-2026-10-10 温度/时间表示：`scripts/check.sh all` 退出 0，后端独立 PostgreSQL 38 项、前端 24 项与检查/构建、隔离浏览器 11 项通过。新测试 `test_reaction_conditions.py` 及浏览器条件模式用例验证 °C/描述、h/min/描述、迁移保留旧数值及元数据、精度/零值、互斥规则、重访、复制和摘要；默认库迁移前备份已验证，迁移后原业务记录逐表相同。详见 PROGRESS。
-
-2026-10-10 复制反应顺序：`scripts/check.sh all` 退出 0，隔离后端 40 项、前端 24 项与检查/构建、浏览器 11 项通过。序号迁移保留旧字段与显示顺序，12 步跨页/连续复制/摘要/新建追加及浏览器三步复制刷新验证通过；授权纠正 EXP-2026-0004 与 0006，除序号及四行版本更新时间外全库原记录逐字段未变。详见 PROGRESS。
-
-2026-10-10 限制反应物与自动收率：隔离后端 PostgreSQL 45 项、最终前端 31 项与 lint/类型/构建、隔离浏览器 12 项通过。`test_product_yield.py` 验证 Decimal 计算、单位/计量比、零值/超 100%、手填保留、缺项失败不写、并发单限制反应物、删除恢复冲突、复制、旧字段/元数据迁移保留及有新字段时拒绝有损降级；UI 验证质量/计量比联动、默认 1、eq 固定、手动覆盖、旧手填值仅改备注仍保留，以及桌面/窄屏控件不越界。完整检查初次浏览器用例等待/定位问题修正后分项重验均通过。迁移前备份 verify 通过，部署后旧字段精确快照完全一致、原件哈希相同，详见 PROGRESS。
-
-2026-10-11 实验记录本：缓存模式 `scripts/check.sh all` 退出 0，后端 54 项、前端 31 项及检查/构建、隔离浏览器 17 项通过。新增 `test_notebooks.py` 验证本内编号、原子转移/预览冲突、归档、跨本复制、恢复和迁移回收站排除，浏览器验证卡片及操作闭环。真实库 7 个有效实验按原编号顺序重新编号，正文及其他原有表逐项一致，原件完整哈希检查通过；备份、Git 基线和部署证据见 PROGRESS。
-
-2026-10-11 第 3 项布局与留白：缓存模式完整检查退出 0，后端 63、前端 31、隔离浏览器 21 项通过。新增 `新增区按需展开保留输入，反应顶部切换和区块留白适配窄屏` 验证折叠保留文字和已选文件、顶部反应切换、分页留白、输入高度与 1280/390px 无页面横向溢出；原闭环覆盖更多菜单建档、反应创建、上传保存与未保存切换保护。截图及日志见 PROGRESS。
-
-2026-10-12 新首页正式迁移：完整缓存模式 `scripts/check.sh all` 退出 0，隔离后端 63、前端 38、浏览器 23 项通过。`frontend/e2e/homepage.spec.ts` 覆盖同页导航、侧栏、拖拽、离开页面后停止绘制、系统主题、全局配色持久化、五色双模式及 768/390/320px 窄屏布局。已核对截图，仅更新正式前端并完成无 API 写入的上线浏览检查；独立 18082 预览保持原设计。日志、部署与回退基线见 PROGRESS。
+2026-09-22 至 2026-10-12 的逐次部署、备份、回滚基线和旧测试数量保存在 Git：`git show 48c4d74:PROGRESS.md`、`git show 48c4d74:docs/verification.md`。下表中的阶段和日期是历史证据，不代表本次重新执行了备份恢复或外部 API 联调；历史 `/tmp` 日志可能已失效。

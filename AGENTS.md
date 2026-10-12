@@ -1,6 +1,6 @@
 # RDMS 工作约定
 
-- 先读 `README.md`、`PROGRESS.md` 和 `docs/verification.md`；阶段任务书位于 `docs/tasks/`。
+- 先读 `README.md`、`PROGRESS.md` 和 `docs/verification.md`；已完成阶段任务书从 Git 历史 `48c4d74` 查阅。
 - 本项目仅供本机个人使用。保持前端只绑定回环地址，后端与数据库不发布宿主端口；保留 Host 与写入请求 Origin 检查。
 - 业务数据库变更使用 Alembic 迁移，不在启动时用 `create_all` 替代迁移。
 - 运行 `scripts/check.sh all` 验证后端 PostgreSQL 测试、前端检查及隔离浏览器端到端流程。

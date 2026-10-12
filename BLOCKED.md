@@ -1,43 +1,11 @@
 # 阻塞与待处理事项
 
-## 当前记录
+2026-10-12 工程审计：当前本机服务健康；本次检查结果见 [PROGRESS](PROGRESS.md)。未解决的外部资料限制如下，不妨碍本机录入、查询、文件和备份功能。
 
-应用开发和部署无阻塞；CAS 官方接口凭据及三条缺失 CAS 的资料补全仍有外部限制，见 CAS-001。阶段 00–08 验收历史见 `docs/verification.md`。
+## CAS-001 官方凭据与资料来源（待外部核实）
 
-### ST03-001 前端镜像构建网络中断（已解决）
+- 历史证据：2026-09-26 官方接口返回 401；2026-10-01 三条结构查询遭认证/权限拒绝，PubChem 等来源仍未提供三条可靠 CAS。来源见 [化合物身份规范](docs/compound-identity.md)。
+- 本次未联网重验凭据、未核实当前科研资料缺项数量，不能将该历史快照当作当前 API 状态。
+- 解除条件：有效且具有对应接口权限的凭据，以及与精确结构和盐型一致的可靠 CAS 来源；不猜测或填造编号。
 
-- 发现日期：2026-09-23。首次执行 `docker compose up --build -d` 时，前端 Dockerfile 的 `npm ci` 报 `ECONNRESET`，该命令退出 1；后端和前端独立检查均已通过。
-- 影响与处置：使用已通过的 Vite 生产产物临时组装本机前端镜像继续只读联调，未改数据库卷或用户数据。网络恢复后按原 Dockerfile 运行 `docker compose build frontend` 退出 0，随后标准 `docker compose up --build -d` 退出 0；运行接口健康及业务列表只读请求成功。临时镜像已由标准镜像替换。
-- 当前状态：不再阻塞阶段 03。若未来再次出现 npm 下载错误，先检查网络或重试构建，不需要更改数据库或安装系统工具。
-
-### ENV-001 Docker 可用性（已解决）
-
-- 历史证据：规划时运行 `docker --version` 与 `docker compose version` 均返回 `command not found`。
-- 解决证据：用户完成设置后，应用内 CLI 返回 Docker 29.8.0、Compose v5.5.1，context 为 desktop-linux。获准在沙箱外运行只读 `docker info --format 'Server={{.ServerVersion}} OS={{.OSType}} Architecture={{.Architecture}}'`，退出码 0，输出 `Server=29.8.0 OS=linux Architecture=aarch64`。
-- 路径说明：用户命令已安装在 `/Users/yuchensmacbookair/.docker/bin/docker`，链接至应用内 CLI。当前代理会话 PATH 尚未包含该目录；后续模型可用绝对路径 `/Applications/Docker.app/Contents/Resources/bin/docker`，或仅为当前 shell 加入用户命令目录，无需重新安装。
-- 权限说明：沙箱内连接用户 Docker socket 返回 permission denied；这不代表引擎故障。后续需要连接引擎的操作仍应遵循各自环境的权限规则。
-- 验证边界：只确认 CLI、Compose 插件和引擎响应；未拉取镜像、创建容器或验证项目启动、PostgreSQL 测试与备份还原。
-- 下一步：阶段 00 已完成；进入阶段 01 时无需再次要求用户安装或首次启动 Docker。
-
-阶段 00 已于 2026-09-22 完成复核：CLI 29.8.0、Compose v5.5.1、context desktop-linux；沙箱外只读 `docker info` 再次退出码 0，输出 `Server=29.8.0 OS=linux Architecture=aarch64`。后续无需再把 ENV-001 当作未解决问题。
-
-### 阶段 01 已处理事项
-
-- 已初始化本地 Git main 分支，并建立 `.gitignore`；`.env`、`data/`、上传、备份、依赖和测试产物均被排除。当前没有创建提交或远程。
-- Docker Hub 获取 Python 和 nginx 镜像时各出现一次 OAuth 超时；缩小为单镜像拉取后均成功，最终 Compose 构建与启动通过，不是当前阻塞。
-- npm 10 在解析 Vitest 4.1.11 的可选 peer dependency 时出现已知 Arborist `Cannot read properties of null (reading 'edgesOut')`。改用 npm 11 在隔离目录生成 lockfile后，Node 22/npm 10 的 `npm ci`、测试和生产构建全部通过，npm audit 为 0 vulnerabilities。此项已解决。
-- 后端测试显示 Starlette 对 anyio 旧别名的一条弃用警告，前端安装显示 ESLint 9.35.0 生命周期提示；两者不影响当前运行或检查。后续正常依赖维护时升级，阶段 01 不为消除提示盲目追新。
-- 当前服务保持运行，仅 `127.0.0.1:8080` 对宿主开放。普通 `docker compose down`/`up -d` 已验证不会删除数据库卷；不要使用 `down -v` 作为常规停止方式。
-
-以上为阶段 00–01 的历史记录；应用开发现已推进至阶段 03。
-
-## 后续记录格式
-
-问题 ID、发现日期、具体证据、影响范围、已尝试方法、可继续部分、解除条件。解决后保留记录并标明解决证据；没有剩余阻塞时明确写“当前无未解决阻塞”。
-
-### CAS-001 三条 CAS 未能核实，官方接口拒绝当前密钥（2026-10-01）
-
-- 对 Ester-6-HF、Acid-6-HF、6HF-4C-FP 的现有 InChIKey 调用本机结构资料查询，CAS Common Chemistry 均返回认证/权限拒绝。未输出、修改或替换密钥。
-- PubChem 精确结构、NCI Cactus、系统名称与结构键搜索未提供可确认 CAS；Acid-6-HF 已有 PubChem CID 1695613，但该编号不是 CAS。不能断言三者没有注册号。
-- 可继续部分已完成：七条系统名称补全，四条已有 CAS 核对，原名称迁移为代号；应用改动、隔离检查与本机更新完成。
-- 解除条件：获得匹配精确结构和盐型的可靠 CAS 来源；恢复官方查询还需有效且有对应权限的 CAS 凭据。恢复接口不保证一定能查到这三条号码。逐条证据见 `docs/compound-identity.md`。
+已解决的 Docker、构建网络及初期依赖问题移出当前阻塞面；历史原文可用 `git show 48c4d74:BLOCKED.md` 查阅。后续真实阻塞记录日期、证据、影响、已尝试方法和解除条件。

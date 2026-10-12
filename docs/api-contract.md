@@ -1,6 +1,6 @@
 # REST API 契约
 
-状态：实验、化合物、标签和显式关联路径已于阶段 03 实现；其余业务路径按后续阶段实现。所有路径以 /api 开头。字段类型和关系约束以 [数据模型](data-model.md) 为准；此处固定外部行为。阶段 01 建立 OpenAPI 和类型生成机制，后续阶段逐步实现业务路由，不提前创建返回假数据的占位业务接口。
+状态：以下业务已实现，按 2026-10-12 当前路由校准。所有路径以 /api 开头；完整字段和枚举以运行中 `/api/openapi.json` 与 `frontend/src/types/api.generated.ts` 为准，关系规则见 [数据模型](data-model.md)。本文是维护摘要，不复制完整 OpenAPI。
 
 ## 通用协议
 
@@ -25,17 +25,17 @@ fields 元素格式为 `{field: "amount", message: "请同时填写单位"}`。r
 
 | 方法和路径 | 输入与返回 |
 |---|---|
-| GET /experiments | q、status、date_from、date_to、tag_id、page/page_size、sort=date_desc/date_asc；q 搜 title/code |
-| POST /experiments | title、date 必填；其余业务字段可选；tag_ids 可选且默认 []；返回完整记录 |
+| GET /experiments | q、status、date_from、date_to、tag_id、page/page_size、notebook_id、sort=date_desc/date_asc/code_desc/code_asc/title_desc/title_asc；q 搜 title/code |
+| POST /experiments | title、date 必填；notebook_id 可指定目标本；notes 统一备注；兼容 tag_ids，但当前 UI 不提交实验标签；返回完整记录 |
 | GET /experiments/{id} | 完整基本字段和标签；子实体通过各列表获取，不返回无限嵌套集合 |
 | PATCH /experiments/{id} | expected_version 和可修改字段；tag_ids 出现时原子替换标签集合 |
 | DELETE /experiments/{id} | expected_version；软删除 |
-| POST /experiments/{id}/restore | expected_version；恢复 |
+| POST /experiments/{id}/restore | expected_version、notebook_id；恢复至未归档记录本并领取新编号 |
 | GET /experiments/{id}/compounds | 分页并集，返回 compound 及 sources 数组 |
 | POST /experiments/{id}/compounds | compound_id、expected_version（实验版本）；新增显式关联，重复关联 409 |
 | DELETE /experiments/{id}/compounds/{compound_id} | expected_version（实验版本）；仅解除显式关联；不存在显式关联返回 404 |
-| GET /compounds | q、tag_id、page/page_size、sort=created_desc/name_asc；q 搜 name/code/smiles |
-| POST /compounds | name 必填；smiles、molecular_formula、molecular_weight、notes、tag_ids 可选 |
+| GET /compounds | q、tag_id、page/page_size、sort=created_desc/name_asc；q 搜 name/codename/cas_number/smiles |
+| POST /compounds | name、codename、cas_number、结构、性质、notes、tag_ids 等字段按 OpenAPI 校验；不分配 CMP 编号 |
 | GET/PATCH/DELETE /compounds/{id} | 详情、更新、软删除；更新与删除采用版本规则 |
 | POST /compounds/{id}/restore | 恢复 |
 | GET /compounds/{id}/experiments | 分页反查，含 sources |
@@ -45,10 +45,20 @@ fields 元素格式为 `{field: "amount", message: "请同时填写单位"}`。r
 创建实验示例：
 
 ```json
-{"title":"Suzuki 条件探索","date":"2026-09-22","objective":"比较反应条件","status":"draft","tag_ids":[]}
+{"title":"Suzuki 条件探索","date":"2026-09-22","objective":"比较反应条件","status":"draft"}
 ```
 
 响应具有服务器生成的 id、experiment_code、created_at、updated_at、version=1 和全部定义字段。后端不接受客户端传入编号。返回标签为 `{id,name,version}` 数组，不再单独返回 tag_ids。
+
+## 记录本、复制、导航与化学结构
+
+- GET/POST `/notebooks`、GET/PATCH `/notebooks/{id}`：分页、创建、详情、改名及归档；PATCH 带 expected_version。
+- POST `/experiments/transfer-preview` 与 `/experiments/transfer`：指定 notebook_id、experiments（id/expected_version），执行转移时提交预览的 expected_next_number；原子更新与重新编号见 [记录本](notebooks.md)。
+- POST `/experiments/{id}/copy`：expected_version、title、date、可选 notebook_id，返回独立草稿；复制内容边界见 README。
+- GET `/experiments/{id}/neighbors`、`/compounds/{id}/neighbors`：与列表一致的排序、筛选和相邻记录。
+- POST `/compounds/bulk-tag`：name 与 compounds（id/expected_version）；追加标签，原关联保留，失败整批回滚。
+- POST `/compounds/structure/preview`、`/compounds/structure/lookup`：本机结构预览、显式公开资料查询；GET `/compounds/{id}/structure.svg` 输出结构图。
+- POST `/compounds/cas/lookup`、`/compounds/{id}/structure/cas`：CAS 候选查询、带版本号补全；见 [投料表](reactant-table.md)。
 
 ## 样品与反应
 
@@ -62,7 +72,7 @@ fields 元素格式为 `{field: "amount", message: "请同时填写单位"}`。r
 | POST /experiments/{id}/reactions | reaction_name 必填；条件字段可选 |
 | GET/PATCH/DELETE /reactions/{id} | 详情、更新、软删除 |
 | POST /reactions/{id}/restore | 恢复 |
-| GET /reactions/{id}/components | 按 sort_order、created_at、id 排序，分页 |
+| GET /reactions/{id}/components | 按 sort_order、created_at、id 排序，分页；支持 reactants_only、exclude_solvents、solvents_only 分类筛选 |
 | POST /reactions/{id}/components | compound_id、role 必填；数量等可选 |
 | PATCH/DELETE /reactions/{id}/components/{component_id} | 校验组件属于路径中的 reaction；版本控制 |
 | POST /reactions/{id}/components/{component_id}/restore | 校验父级有效后恢复 |
