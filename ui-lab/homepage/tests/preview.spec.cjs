@@ -8,13 +8,14 @@ test('desktop scene, safe navigation, motion and theme controls', async ({ page 
   await expect(page.getByRole('heading', { name: /研究数据/ })).toBeVisible();
   await page.waitForTimeout(1200);
   await page.screenshot({ path: 'test-results/home-dark.png' });
-  await page.getByRole('button', { name: '暂停动画' }).click();
+  await expect(page.getByRole('button', { name: /暂停动画|播放动画/ })).toHaveCount(0);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(page.locator('canvas')).toHaveAttribute('data-motion', 'paused');
   const frozen = await page.locator('canvas').evaluate(el => el.toDataURL());
   await page.mouse.move(1200, 350);
   await page.waitForTimeout(180);
   expect(await page.locator('canvas').evaluate(el => el.toDataURL())).toBe(frozen);
-  await page.getByRole('button', { name: '播放动画' }).click();
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.waitForTimeout(180);
   expect(await page.locator('canvas').evaluate(el => el.toDataURL())).not.toBe(frozen);
   await page.getByRole('button', { name: '切换浅色主题' }).click();
@@ -34,7 +35,7 @@ test('mobile layouts and reduced motion', async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/');
     await expect(page.locator('canvas')).toHaveAttribute('data-motion', 'paused');
-    await expect(page.getByRole('button', { name: '播放动画' })).toBeVisible();
+    await expect(page.locator('footer')).toHaveCount(0);
     await expect(page.getByRole('link', { name: '实验（新标签页）', exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `test-results/home-${width}.png`, fullPage: true });

@@ -8,7 +8,7 @@ window.createSpaceScene = function (canvas, onAvailability) {
   function readPalette() {
     const css = getComputedStyle(document.documentElement);
     const get = key => css.getPropertyValue(key).trim();
-    palette = { bg:get("--bg"), glow:get("--scene-glow"), orbit:get("--scene-orbit"), particle:get("--scene-particle"), bright:get("--scene-bright"), warm:get("--scene-warm"), accent:get("--accent") };
+    palette = { light:document.documentElement.dataset.theme === "light", bg:get("--bg"), glow:get("--scene-glow"), orbit:get("--scene-orbit"), particle:get("--scene-particle"), bright:get("--scene-bright"), warm:get("--scene-warm"), accent:get("--accent") };
   }
   let pointerX = 0, pointerY = 0, targetX = 0, targetY = 0;
   let seed = 71;
@@ -63,7 +63,7 @@ window.createSpaceScene = function (canvas, onAvailability) {
         const p = project(Math.cos(a) * ring, Math.sin(a) * ring, 0, radius, cx, cy);
         if (!step) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
       }
-      ctx.strokeStyle = `rgba(${palette.orbit},.13)`;
+      ctx.strokeStyle = `rgba(${palette.orbit},${palette.light ? .22 : .13})`;
       ctx.lineWidth = .65; ctx.stroke();
     }
     const projected = [];
@@ -78,9 +78,10 @@ window.createSpaceScene = function (canvas, onAvailability) {
     projected.sort((a, b) => a.z - b.z);
     for (const { x, y, z, point } of projected) {
       const depth = (z + 1.4) / 2.8;
-      const opacity = (.15 + depth * .72) * point.brightness;
-      const size = point.size * (.65 + depth * .7) * (mobile ? .9 : 1);
-      const rgb = point.color > .92 ? palette.warm : point.color > .55 ? palette.bright : palette.particle;
+      const opacity = palette.light ? (.38 + depth * .56) * (.65 + point.brightness * .35) : (.15 + depth * .72) * point.brightness;
+      const size = point.size * (.65 + depth * .7) * (mobile ? .9 : 1) * (palette.light ? 1.25 : 1);
+      const color = point.color > .92 ? palette.warm : point.color > .55 ? palette.bright : palette.particle;
+      const rgb = palette.light ? color.split(",").map(channel => Math.round(Number(channel) * .8)).join(",") : color;
       if (point.size > 1.12 && z > .15) {
         ctx.fillStyle = `rgba(${rgb},${opacity * .1})`; ctx.beginPath(); ctx.arc(x, y, size * 3.8, 0, Math.PI * 2); ctx.fill();
       }
