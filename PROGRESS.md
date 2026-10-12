@@ -614,3 +614,8 @@
 - 未点按时光标轻微控制视角；按住锁定视角，以圆盘平面内的手势角位移驱动轴向旋转。松开后惯性衰减至原慢速，中心附近忽略不稳定角度；方向键也改为轴向旋转。系统减少动态效果时仅响应手动旋转。
 - 隔离预览 6 项通过，新增轨道轮廓不变、光标视角变化、惯性速度衰减验证；截图 `ui-lab/homepage/test-results/axial-drag.png` 已检查。日志 `/tmp/rdms-axial-preview.log`。
 - `RDMS_CHECK_CACHED_DEPS=1 scripts/check.sh all` 退出 0：后端 63、前端 38、隔离浏览器 21 项通过，日志 `/tmp/rdms-axial-regression.log`。正式服务与业务数据未改动。
+
+### 2026-10-12 隔离首页：删除圆盘装饰标注
+
+- 修改前提交 `67049be`。删除圆盘旁 FIELD / 001、探索的轨迹及引导横线，清理对应样式；标签页标题统一为 RDMS · 科研数据管理。正式界面未改动。
+- 隔离预览 6 项通过；完整 `scripts/check.sh all` 缓存模式退出 0，后端 63、前端 38、浏览器 21 项通过。日志 `/tmp/rdms-caption-preview.log`、`/tmp/rdms-caption-regression.log`。
