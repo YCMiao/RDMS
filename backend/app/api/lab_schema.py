@@ -148,6 +148,8 @@ class ComponentFields(NumericInput):
         default=None, gt=0, max_digits=20, decimal_places=8
     )
     calculate_yield: bool = False
+    rescale_reactants: bool = False
+    expected_component_versions: dict[UUID, int] | None = None
     amount: Decimal | None = Field(default=None, ge=0, max_digits=20, decimal_places=8)
     unit: str | None = Field(default=None, min_length=1, max_length=50)
     mmol: Decimal | None = Field(default=None, ge=0, max_digits=20, decimal_places=8)
@@ -165,6 +167,8 @@ class ComponentPatch(NumericInput, VersionInput):
         default=None, gt=0, max_digits=20, decimal_places=8
     )
     calculate_yield: bool = False
+    rescale_reactants: bool = False
+    expected_component_versions: dict[UUID, int] | None = None
     amount: Decimal | None = Field(default=None, ge=0, max_digits=20, decimal_places=8)
     unit: str | None = Field(default=None, min_length=1, max_length=50)
     mmol: Decimal | None = Field(default=None, ge=0, max_digits=20, decimal_places=8)

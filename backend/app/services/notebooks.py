@@ -14,9 +14,20 @@ DEFAULT_NOTEBOOK = UUID("00000000-0000-4000-8000-000000000001")
 
 
 def writable(session: Session, notebook_id: UUID | None) -> Notebook:
-    row = session.scalar(
-        select(Notebook).where(Notebook.id == (notebook_id or DEFAULT_NOTEBOOK)).with_for_update()
-    )
+    if notebook_id is None and session.info.get("account_id"):
+        row = session.scalar(
+            select(Notebook)
+            .where(Notebook.archived.is_(False))
+            .order_by(Notebook.created_at, Notebook.id)
+            .limit(1)
+            .with_for_update()
+        )
+    else:
+        row = session.scalar(
+            select(Notebook)
+            .where(Notebook.id == (notebook_id or DEFAULT_NOTEBOOK))
+            .with_for_update()
+        )
     if row is None:
         raise RecordError(404, "NOT_FOUND", "记录本不存在")
     if row.archived:

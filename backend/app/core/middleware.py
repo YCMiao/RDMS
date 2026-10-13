@@ -62,7 +62,12 @@ async def request_id_middleware(
         and origin is not None
         and not allowed_origin(origin, host)
     )
-    if host is None or invalid_origin:
+    invalid_csrf = (
+        request.method in WRITE_METHODS
+        and request.url.path.startswith("/api/")
+        and request.headers.get("X-RDMS-Request") != "1"
+    )
+    if host is None or invalid_origin or invalid_csrf:
         forbidden_response = JSONResponse(
             status_code=403,
             content=error_payload(
@@ -72,5 +77,7 @@ async def request_id_middleware(
         forbidden_response.headers["X-Request-ID"] = request_id
         return forbidden_response
     response = await call_next(request)
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
     response.headers["X-Request-ID"] = request_id
     return response

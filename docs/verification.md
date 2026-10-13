@@ -1,9 +1,10 @@
-# 验收索引（更新于 2026-10-12）
+# 验收索引（更新于 2026-10-13）
 
-当前检查入口：`RDMS_CHECK_CACHED_DEPS=1 scripts/check.sh all`。2026-10-12 本次最终实测退出 0：后端 PostgreSQL 63 项、前端 38 项及检查/构建、隔离浏览器 23 项；npm 安装审计 0 vulnerabilities。结果与边界见 [PROGRESS](../PROGRESS.md) 与 [审计报告](release-audit.md)。下表保留功能证据索引，历史日期不作为当前上线状态。
+当前检查入口：`RDMS_CHECK_CACHED_DEPS=1 scripts/check.sh all`。2026-10-13 账号系统最终实测退出 0：后端 PostgreSQL 71 项、前端 42 项及检查/构建、隔离浏览器 25 项；包含投料联动回归。日志 `/tmp/rdms-auth-check-final.log`。独立账号备份恢复及原件完整哈希演练通过，日志 `/tmp/rdms-auth-restore-verified.log`。用户授权后正式数据库已迁移至 `7d3a1b9c602e`、前后端已更新；原业务表行内容及原件完整哈希比对一致，健康检查、未登录门禁和本机边界实测通过，未创建真实账号；结果与边界见 [PROGRESS](../PROGRESS.md)。下表保留功能证据索引，历史日期不作为当前上线状态。
 
 | 验收 ID | 实测证据 |
 |---|---|
+| AUTH-01 | `backend/tests/test_auth.py` 验证首次旧记录归属、密码摘要、会话撤销/过期、改密、限流、跨账号详情/搜索/回收站/文件/关联与数据库角色。`frontend/src/features/auth.test.tsx` 验证门禁及退出失败，`frontend/e2e/auth.spec.ts` 验证注册、刷新、退出、登录、改密、手机布局及独立空间。恢复演练另外验证角色还原、旧会话撤销和原件一致。 |
 | ENV-01 | 阶段 00：Docker 29.8.0、Compose v5.5.1、引擎、端口与磁盘实测，见 Git 历史 PROGRESS 阶段 00（检索方式在当前 PROGRESS）。 |
 | BOOT-01 | 阶段 01；阶段 08 另用 `rdms08fresh` 从空 PostgreSQL 卷迁移到 `9dd700ef716a`，db/backend 健康、frontend 运行。 |
 | CHECK-01 | 阶段 01 故意失败断言使入口非零，移除后通过；最终 `scripts/check.sh all` 退出 0。 |
@@ -40,6 +41,7 @@
 | EXP-01 | `backend/tests/test_stage04_lab.py` 验证反应后处理和纯化创建、更新、清空；`test_stage06_discovery.py` 验证摘要包含这两个字段；`frontend/e2e/workflow.spec.ts` 验证结构图、当量、条件及后处理在实验详情出现。最近一次 `scripts/check.sh all` 退出码 0；默认库迁移到 `6b4f2c9e1d07` 后健康，实验、化合物、反应记录数仍为 0。 |
 | MASS-01 | `frontend/src/lib/format-mass.test.ts` 验证分子量最多 2 位、精确质量最多 4 位且不补尾零；`frontend/src/features/records.test.tsx` 验证仅编辑名称时原始分子量不被显示值覆盖；`frontend/e2e/workflow.spec.ts` 验证结构预览、详情和列表显示。 |
 | DOSE-01 | `backend/tests/test_compound_chemistry.py` 验证 CAS 校验、本机精确只读匹配、系统名称保存/搜索、PubChem CID 同义词核对和离线返回；`test_stage04_lab.py` 验证反应物分页过滤及历史产物保留。`frontend/src/features/reactant-editor.test.tsx` 验证请求竞态、候选选择、保存失败保留输入和复用已建试剂。`frontend/e2e/workflow.spec.ts` 完成 CAS 添加 → mg/mmol 补全 → 改为 mL → 刷新核对原始精度，并检查投料表顺序、多反应、按需展开和窄屏布局；总览恢复后的截图 `frontend/test-results/reaction-overview-and-table.png` 已目视核对。公开乙醇 `64-17-5` 只读网络实测返回 ethanol、C2H6O、46.07 和来源 CID 702。 |
+| SCALE-01 | `backend/tests/test_reactant_scale.py` 验证有/无限制反应物、保留 eq 与原质量单位、体积/产物/缺失 eq 保留、全表冲突和超限回滚。`frontend/src/features/reactant-editor.test.tsx` 验证单向 eq 换算、用量修改保留 eq、跨页基准与先填用量再填 eq/勾选。`frontend/e2e/workflow.spec.ts` 用隔离记录验证修改 1.05 eq 试剂质量后联动、取消不写入及刷新后的持久化。 |
 | OVERVIEW-01 | 2026-10-01 完成收尾：`frontend/e2e/workflow.spec.ts` 验证总览位于投料表之前，已有产物结构图、收率和条件可见，投料表不含结构图及产物；编辑投料后总览同步更新，多反应和窄屏布局继续通过。恢复版本 `scripts/check.sh all` 退出码 0：后端 32、前端 20、浏览器 6 项；截图 `frontend/test-results/reaction-overview-and-table.png` 已目视核对。 |
 | IDENTITY-01 | 2026-10-01：`test_compound_identity.py` 用临时表验证旧名称、软删除、版本与引用完整迁移，API 验证 CAS 校验、代号/名称/CAS 搜索和旧编号不再返回；浏览器新增 CAS/系统名称/代号保存搜索用例。最终全套检查退出 0：后端 34、前端 20、浏览器 7 项；`frontend/test-results/compound-identity.png` 和反应总览截图已目视核对。默认库名称补全及前后逐字段比对属于用户授权的数据维护，不是验收造数；记录见 `docs/compound-identity.md` 与 PROGRESS。 |
 

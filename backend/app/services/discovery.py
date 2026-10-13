@@ -7,7 +7,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.discovery_schema import DashboardOut, ReactionSummary, SummaryOut
@@ -79,8 +79,8 @@ def dashboard(session: Session) -> dict[str, Any]:
 
 
 def summary(session: Session, experiment_id: UUID) -> SummaryOut:
-    # This must be the first SQL statement in this request's transaction.
-    session.execute(text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"))
+    # Apply isolation before the account context SQL in after_begin.
+    session.info["summary_snapshot"] = True
     experiment = session.scalar(
         select(Experiment).where(Experiment.id == experiment_id, Experiment.deleted_at.is_(None))
     )

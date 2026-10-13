@@ -21,6 +21,7 @@ import { useTheme } from "./hooks/use-theme"
 import { checkHealth, type HealthStatus } from "./services/health"
 import { HomePage } from "./features/home/home-page"
 import { Appearance } from "./features/home/appearance"
+import { AuthGate, AccountSettings, type Account } from "./features/auth"
 import { usePalette } from "./hooks/use-palette"
 
 const navigation = [
@@ -47,6 +48,10 @@ function Placeholder({ title }: { title: string }) {
 }
 
 export default function App() {
+  return <AuthGate>{(account, logout) => <AuthenticatedApp key={account.id} account={account} logout={logout} />}</AuthGate>
+}
+
+function AuthenticatedApp({ account, logout }: { account: Account; logout: () => Promise<void> }) {
   const [status, setStatus] = useState<HealthStatus>("checking")
   const [search, setSearch] = useState("")
   const navigate = useNavigate()
@@ -79,6 +84,8 @@ export default function App() {
           ))}
         </nav>
         <div className="sidebar-footer">
+          <p className="account-name">{account.display_name}</p>
+          <button type="button" onClick={() => void logout()}>退出登录</button>
           <Appearance {...appearance} />
         </div>
       </aside>
@@ -89,6 +96,7 @@ export default function App() {
             <input aria-label="全局搜索" maxLength={200} value={search} onChange={event => setSearch(event.target.value)} placeholder="搜索实验、化合物或编号" />
             <button type="submit">搜索</button>
           </form>
+          <button className="mobile-logout" type="button" aria-label="退出登录" onClick={() => void logout()}>退出</button>
           <details className="mobile-appearance"><summary aria-label="外观设置"><Settings size={18} /></summary><Appearance {...appearance} /></details>
         </header>
         <Routes>
@@ -100,7 +108,7 @@ export default function App() {
           <Route path="/compounds/import" element={<CompoundImportPage />} />
           <Route path="/compounds/new" element={<RecordEditor kind="compounds" />} />
           <Route path="/compounds/:id" element={<RecordEditor kind="compounds" />} />
-          <Route path="/settings" element={<TagManager />} />
+          <Route path="/settings" element={<><AccountSettings account={account} /><TagManager /></>} />
           <Route path="/samples" element={<SamplesPage />} />
           <Route path="/samples/:id" element={<SampleEditor />} />
           <Route path="/files" element={<FilesPage />} />

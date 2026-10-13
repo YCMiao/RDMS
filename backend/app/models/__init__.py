@@ -37,12 +37,20 @@ class Timestamped:
     )
 
 
-class Versioned(Timestamped):
+class Owned:
+    owner_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("account.id"),
+        index=True,
+        server_default=text("nullif(current_setting('rdms.account_id', true), '')::uuid"),
+    )
+
+
+class Versioned(Owned, Timestamped):
     version: Mapped[int] = mapped_column(Integer, server_default="1")
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
-class Notebook(Timestamped, Base):
+class Notebook(Owned, Timestamped, Base):
     __tablename__ = "notebook"
     __table_args__ = (
         CheckConstraint("length(btrim(name)) > 0", name="name_nonempty"),
@@ -312,15 +320,16 @@ class FileAsset(Versioned, Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
 
-class Tag(Timestamped, Base):
+class Tag(Owned, Timestamped, Base):
     __tablename__ = "tag"
     __table_args__ = (
+        UniqueConstraint("owner_id", "normalized_name", name="uq_tag_owner_name"),
         CheckConstraint("version > 0", name="version_positive"),
         CheckConstraint("length(btrim(name)) > 0", name="name_nonempty"),
     )
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(50))
-    normalized_name: Mapped[str] = mapped_column(String(50), unique=True)
+    normalized_name: Mapped[str] = mapped_column(String(50))
     version: Mapped[int] = mapped_column(Integer, server_default="1")
 
 
@@ -360,3 +369,28 @@ class NumberCounter(Base):
     namespace: Mapped[str] = mapped_column(String(3), primary_key=True)
     year: Mapped[int] = mapped_column(Integer, primary_key=True)
     next_value: Mapped[int] = mapped_column(BigInteger)
+
+
+class Account(Base):
+    __tablename__ = "account"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    username: Mapped[str] = mapped_column(String(40), unique=True)
+    display_name: Mapped[str] = mapped_column(String(80))
+    password_hash: Mapped[str] = mapped_column(String(256))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class LoginSession(Base):
+    __tablename__ = "login_session"
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    account_id: Mapped[UUID] = mapped_column(
+        ForeignKey("account.id", ondelete="CASCADE"), index=True
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class AuthRate(Base):
+    __tablename__ = "auth_rate"
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    attempts: Mapped[int] = mapped_column(Integer)

@@ -1,4 +1,4 @@
-# 反应物投料表（2026-09-30）
+# 反应物投料表（2026-10-13）
 
 ## 展示与交互
 
@@ -14,13 +14,17 @@
 - `POST /api/compounds/{id}/structure/cas` 是用户明确点击的旧记录补全入口，带 expected_version；唯一候选及现有分子式、SMILES/InChIKey 身份须一致。复用原 UUID，保留名称/代号/备注/性质/标签/科研关联，通过常规版本检查更新结构及派生资料，原投料不重算；冲突、缺项、多候选或身份不一致不写入。已有结构不覆盖。本机 CAS 精确查询仍只读且本机命中不联网。接口字段核对依据 [PubChem PUG REST](https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest)。
 - 系统名称使用 `compound.name`，原有名称保留为 `codename`；以 CAS 编号，不再生成 CMP 编号。Alembic `b7e1a9302c64` 承接原 `iupac_name` 字段并保留旧资料，详见 [身份规范](compound-identity.md)。替换成不同结构时清理旧系统名称和 CAS。
 - `GET /api/reactions/{id}/components?reactants_only=true&exclude_solvents=true` 在数据库查询阶段排除产物和溶剂；溶剂区使用 `solvents_only=true`，计数与分页一致。省略参数保持旧行为。
-- 投料保存沿用十进制字符串和版本冲突检查；质量/mmol 按 Mw 即时联动，最多保留数据库支持的八位小数；支持 mg、g、kg 和微克质量单位。体积保持手填，不参与质量或 mmol 换算。同一反应优先按勾选的限制反应物确定 1 eq 的 mmol；否则沿用最早保存的有效正数 mmol/eq 作为基准（排除正在编辑的行），输入 eq 立即更新 mmol 和质量；直接修改 mmol 更新 eq 和质量，直接修改质量更新 mmol 及有基准时的 eq，输入操作可替换先前计算值。没有基准时手动填写首组，两项为零或缺失的记录不作为基准。
+- 投料保存沿用十进制字符串和版本冲突检查；质量/mmol 按 Mw 双向联动，最多保留八位小数；支持 mg、g、kg 和微克。修改质量或 mmol 不反推 eq。已勾选且有有效用量的限制反应物提供 1 eq 基准，修改其他行 eq 单向计算该行 mmol 和质量；没有限制反应物时不隐式使用历史行基准，eq 和用量独立填写。
+- 用户修改质量或 mmol 后，以当前正数 mmol / eq 作为新规模；保存时通过 `rescale_reactants` 和全表 `expected_component_versions` 快照，在父反应锁及同一事务下更新其他未删除、非产物、非溶剂且有 eq 的行。保留各行 eq、单位和备注；mmol = 新规模 × 该行 eq，质量按 Mw 换算。缺少 Mw 但原质量、mmol 有效时按原质量/mmol 比例缩放；无法换算质量则保留原值。缺少 eq 的行不修改；零或缺失的当前 eq/mmol 不触发规模调整。修改 eq 表示调整该行比例，不触发全表缩放。
+- 体积始终手填，联动可更新液体试剂 mmol，但不会改写 mL/L/µL；独立溶剂、产物用量和保存的收率保持原值。仅改备注、打开或取消编辑不重算。新增也支持显式规模调整。快照有版本、增删差异或计算结果超出数值范围时全部拒绝，不留下部分更新；受影响行版本递增，旧编辑器不能覆盖新规模。不新增数据库字段、不自动重算历史数据。
+
 
 ## 验证位置
 
 - 后端：`backend/tests/test_compound_chemistry.py` 覆盖只读查询、精确匹配、软删除排除、非法 CAS、系统名称保存与搜索、CID/CAS 同义词核对和离线降级。
 - 后端：`backend/tests/test_stage04_lab.py` 覆盖投料过滤、计数及历史产物保留。
-- 前端：`frontend/src/features/reactant-editor.test.tsx` 覆盖公开候选保存、CAS 请求竞态、多候选选择、液体不换算、失败保留输入及重试不重复建档。
+- 后端：`backend/tests/test_reactant_scale.py` 验证有/无限制反应物的规模联动、质量单位、体积/产物/缺失 eq 保留、版本冲突及超限回滚。
+- 前端：`frontend/src/features/reactant-editor.test.tsx` 覆盖单向 eq 换算、质量修改保留 eq、无标记时独立填写、全表快照提交，以及公开候选保存、CAS 请求竞态、多候选选择、液体不换算、失败保留输入及重试不重复建档。
 - 浏览器：`frontend/e2e/workflow.spec.ts` 验证本机 CAS 添加、表格列和顺序、展开/收起、编辑与刷新后精度、多反应、投料表隐藏产物、独立产物入口新增/编辑/删除与恢复、用量和收率精度保存，以及窄屏不产生页面横向溢出。自动化测试只使用隔离数据库和临时文件。
 
 ## 限制反应物与收率

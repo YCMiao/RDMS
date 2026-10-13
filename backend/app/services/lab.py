@@ -346,9 +346,18 @@ def create_component(
     if reaction.deleted_at is not None:
         raise missing()
     compound_locks(session, {payload.compound_id})
-    values = payload.model_dump(exclude={"sort_order", "calculate_yield"})
+    values = payload.model_dump(
+        exclude={
+            "sort_order",
+            "calculate_yield",
+            "rescale_reactants",
+            "expected_component_versions",
+        }
+    )
     prepare_component(session, reaction_id, values, calculate_yield=payload.calculate_yield)
     validate(values, component=True)
+    if payload.rescale_reactants:
+        rescale_reactants(session, reaction_id, values, payload.expected_component_versions)
     order = payload.sort_order
     if order is None:
         order = (
@@ -393,7 +402,13 @@ def patch_component(
     if row.version != payload.expected_version:
         raise conflict()
     changes = payload.model_dump(
-        exclude_unset=True, exclude={"expected_version", "calculate_yield"}
+        exclude_unset=True,
+        exclude={
+            "expected_version",
+            "calculate_yield",
+            "rescale_reactants",
+            "expected_component_versions",
+        },
     )
     if any(
         changes.get(key, True) is None
@@ -416,6 +431,10 @@ def patch_component(
         changes["yield_percent"] = values["yield_percent"]
         changes["stoichiometric_ratio"] = values["stoichiometric_ratio"]
     validate(values, component=True)
+    if payload.rescale_reactants:
+        rescale_reactants(
+            session, reaction_id, values, payload.expected_component_versions, component_id
+        )
     if not update_if_version(
         session, ReactionComponent, component_id, payload.expected_version, changes
     ):
@@ -453,6 +472,56 @@ MASS_TO_MG = {
     "µg": Decimal("0.001"),
     "μg": Decimal("0.001"),
 }
+
+
+def rescale_reactants(
+    session: Session,
+    reaction_id: UUID,
+    values: dict[str, Any],
+    expected_versions: dict[UUID, int] | None,
+    component_id: UUID | None = None,
+) -> None:
+    """Save a new mmol/eq basis atomically under the existing parent reaction lock."""
+    mmol, eq = values.get("mmol"), values.get("equivalents")
+    if values["role"] in {"product", "solvent"} or not mmol or not eq or mmol <= 0 or eq <= 0:
+        raise RecordError(422, "VALIDATION_ERROR", "调整反应规模需要反应物的正数 eq 和 mmol")
+    rows = session.scalars(
+        select(ReactionComponent)
+        .where(
+            ReactionComponent.reaction_id == reaction_id,
+            ReactionComponent.deleted_at.is_(None),
+            ReactionComponent.role.notin_(["product", "solvent"]),
+        )
+        .with_for_update()
+    ).all()
+    if expected_versions != {row.id: row.version for row in rows}:
+        raise conflict("投料表已改变，请刷新后重新调整反应规模")
+    with localcontext() as context:
+        context.prec = 60
+        basis = mmol / eq
+        for row in rows:
+            if row.id == component_id or row.equivalents is None:
+                continue
+            new_mmol = (basis * row.equivalents).quantize(Decimal("0.00000001"))
+            changes: dict[str, Any] = {"mmol": new_mmol}
+            if row.unit in MASS_TO_MG:
+                compound = session.get(Compound, row.compound_id)
+                if compound and compound.molecular_weight and compound.molecular_weight > 0:
+                    changes["amount"] = (
+                        new_mmol * compound.molecular_weight / MASS_TO_MG[row.unit]
+                    ).quantize(Decimal("0.00000001"))
+                elif row.amount is not None and row.mmol and row.mmol > 0:
+                    changes["amount"] = (row.amount * new_mmol / row.mmol).quantize(
+                        Decimal("0.00000001")
+                    )
+            if any(value >= Decimal("1000000000000") for value in changes.values()):
+                raise RecordError(
+                    422, "VALIDATION_ERROR", "联动投料超出可保存范围，请检查 eq 和 mmol"
+                )
+            if any(
+                getattr(row, key) != value for key, value in changes.items()
+            ) and not update_if_version(session, ReactionComponent, row.id, row.version, changes):
+                raise conflict()
 
 
 def prepare_component(

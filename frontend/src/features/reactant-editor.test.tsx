@@ -42,13 +42,13 @@ describe("CAS reagent entry", () => {
     await userEvent.click(screen.getByRole("button", { name: "手动填写" }))
     await userEvent.type(screen.getByLabelText("名称（IUPAC）"), "底物")
     await userEvent.type(screen.getByLabelText("eq"), "3")
+    await userEvent.type(screen.getByLabelText("mmol"), "2")
     await userEvent.click(screen.getByRole("checkbox", { name: "限制反应物（1 eq）" }))
     expect(screen.getByLabelText("eq")).toHaveValue(1)
     expect(screen.getByLabelText("eq")).toHaveAttribute("readonly")
-    await userEvent.type(screen.getByLabelText("mmol"), "2")
     await userEvent.click(screen.getByRole("button", { name: "加入投料表" }))
     await waitFor(() => expect(saved).toHaveBeenCalledOnce())
-    expect(writes[1]).toMatchObject({ is_limiting: true, equivalents: "1", mmol: "2" })
+    expect(writes[1]).toMatchObject({ is_limiting: true, equivalents: "1", mmol: "2", rescale_reactants: true, expected_component_versions: {} })
   })
   it("calculates product yield as mass and ratio change and allows manual override", async () => {
     const writes: Record<string, unknown>[] = []
@@ -115,11 +115,11 @@ describe("CAS reagent entry", () => {
     expect(writes[1].body).toMatchObject({ compound_id: "cmp-1", role: "substrate", amount: "92.14", unit: "mg", mmol: "2", equivalents: "1.25" })
     expect(writes[1].body).not.toHaveProperty("yield_percent")
   })
-  it("links eq, mmol and mass immediately across pages while preserving volume", async () => {
+  it("uses a limiting basis one way across pages, preserves eq on quantity edits and preserves volume", async () => {
     const remote = vi.spyOn(globalThis, "fetch").mockImplementation(async input => {
       const path = String(input)
       if (path.includes("/components?page=1")) return respond({ ...empty, total: 2, items: [{ id: "zero", mmol: "0", equivalents: "1" }] })
-      if (path.includes("/components?page=2")) return respond({ ...empty, total: 2, items: [{ id: "basis", mmol: "2", equivalents: "1" }] })
+      if (path.includes("/components?page=2")) return respond({ ...empty, total: 2, items: [{ id: "basis", mmol: "2", equivalents: "1", is_limiting: true }] })
       return respond(empty)
     })
     mount()
@@ -131,14 +131,14 @@ describe("CAS reagent entry", () => {
     expect(screen.getByLabelText("投料量")).toHaveValue(96.747)
     await userEvent.clear(screen.getByLabelText("mmol"))
     await userEvent.type(screen.getByLabelText("mmol"), "3")
-    expect(screen.getByLabelText("eq")).toHaveValue(1.5)
+    expect(screen.getByLabelText("eq")).toHaveValue(1.05)
     expect(screen.getByLabelText("投料量")).toHaveValue(138.21)
     await userEvent.clear(screen.getByLabelText("mmol"))
     await userEvent.clear(screen.getByLabelText("eq"))
     await userEvent.clear(screen.getByLabelText("投料量"))
     await userEvent.type(screen.getByLabelText("投料量"), "92.14")
     expect(screen.getByLabelText("mmol")).toHaveValue(2)
-    expect(screen.getByLabelText("eq")).toHaveValue(1)
+    expect(screen.getByLabelText("eq")).toHaveValue(null)
     await userEvent.selectOptions(screen.getByLabelText("单位"), "mL")
     await userEvent.clear(screen.getByLabelText("投料量"))
     await userEvent.type(screen.getByLabelText("投料量"), "5")
@@ -153,6 +153,30 @@ describe("CAS reagent entry", () => {
     expect(screen.getByLabelText("mmol")).toHaveValue(0)
     expect(screen.getByLabelText("投料量")).toHaveValue(0)
     expect(screen.queryByRole("button", { name: /按 Mw 补全/ })).not.toBeInTheDocument()
+  })
+  it("keeps eq independent without an explicitly selected limiting reactant", async () => {
+    const writes: Record<string, unknown>[] = []
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      if (String(input).includes("/components?page=")) return respond({ ...empty, total: 1, items: [{ id: "basis", version: 3, mmol: "1", equivalents: "1" }] })
+      if (init?.method === "POST") { const body = JSON.parse(String(init.body)); writes.push(body); return respond({ ...body, id: "c1" }, 201) }
+      return respond(empty)
+    })
+    const saved = mount()
+    await userEvent.click(screen.getByRole("button", { name: "手动填写" }))
+    await userEvent.type(screen.getByLabelText("名称（IUPAC）"), "底物")
+    await userEvent.type(screen.getByLabelText("Mw (g/mol)"), "100")
+    await userEvent.type(screen.getByLabelText("eq"), "1.05")
+    expect(screen.getByLabelText("mmol")).toHaveValue(null)
+    await userEvent.clear(screen.getByLabelText("eq"))
+    await userEvent.type(screen.getByLabelText("投料量"), "210")
+    expect(screen.getByLabelText("mmol")).toHaveValue(2.1)
+    expect(screen.getByLabelText("eq")).toHaveValue(null)
+    await userEvent.type(screen.getByLabelText("eq"), "1.05")
+    expect(screen.getByLabelText("mmol")).toHaveValue(2.1)
+    expect(screen.getByLabelText("eq")).toHaveValue(1.05)
+    await userEvent.click(screen.getByRole("button", { name: "加入投料表" }))
+    await waitFor(() => expect(saved).toHaveBeenCalledOnce())
+    expect(writes[1]).toMatchObject({ mmol: "2.1", equivalents: "1.05", rescale_reactants: true, expected_component_versions: { basis: 3 } })
   })
   it("ignores a late lookup after CAS changes and does not guess liquid mmol", async () => {
     let completeFirst!: (response: Response) => void

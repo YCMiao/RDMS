@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import csv
 import hashlib
 import io
@@ -315,12 +316,20 @@ def verify_payload(backup_dir: Path, *, require_success: bool = True) -> dict[st
 def current_revision() -> str:
     revisions = []
     for path in (PROJECT_ROOT / "backend/alembic/versions").glob("*.py"):
-        text = path.read_text(encoding="utf-8")
-        revision = re.search(r'^revision: str = "([^"]+)"', text, re.M)
-        down = re.search(r'^down_revision: str \| None = (.+)$', text, re.M)
-        if revision and down:
-            revisions.append((revision.group(1), down.group(1)))
-    parents = {value.strip('"') for _, value in revisions if value != "None"}
+        values = {}
+        for node in ast.parse(path.read_text(encoding="utf-8")).body:
+            if isinstance(node, ast.Assign):
+                targets, value = node.targets, node.value
+            elif isinstance(node, ast.AnnAssign):
+                targets, value = [node.target], node.value
+            else:
+                continue
+            for target in targets:
+                if isinstance(target, ast.Name) and target.id in {"revision", "down_revision"}:
+                    values[target.id] = ast.literal_eval(value)
+        if "revision" in values and "down_revision" in values:
+            revisions.append((values["revision"], values["down_revision"]))
+    parents = {parent for _, parent in revisions if parent is not None}
     heads = [revision for revision, _ in revisions if revision not in parents]
     if len(heads) != 1:
         raise ProtectionError("无法确定唯一 Alembic head")
@@ -357,10 +366,21 @@ def restore(backup_dir: Path, target_project: str, target_root: Path, port: int)
     if not running(target_project, target_root, "db", port=port):
         raise ProtectionError("恢复数据库未启动")
     user, database = db_identity(target_project, target_root, port=port)
+    # pg_dump excludes cluster roles and ACLs; policies still name rdms_member.
+    database_query(target_project, target_root,
+        "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'rdms_member') "
+        "THEN CREATE ROLE rdms_member NOLOGIN NOSUPERUSER NOBYPASSRLS; END IF; END $$", port=port)
     with (backup_dir / "database.dump").open("rb") as dump:
         completed = subprocess.run(compose(target_project, target_root, "exec", "-T", "db", "pg_restore", "-U", user, "-d", database, "--no-owner", "--no-privileges"), cwd=PROJECT_ROOT, env=env, stdin=dump, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
     if completed.returncode:
         raise ProtectionError(f"pg_restore 失败 ({completed.returncode}): {completed.stderr.decode(errors='replace')[-600:]}")
+    database_query(target_project, target_root,
+        "GRANT rdms_member TO CURRENT_USER; GRANT USAGE ON SCHEMA public TO rdms_member; "
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON notebook, experiment, compound, sample, reaction, "
+        "reaction_component, file_asset, tag, experiment_compound, experiment_tag, compound_tag, "
+        "number_counter TO rdms_member; "
+        "GRANT USAGE, SELECT ON SEQUENCE notebook_code_seq TO rdms_member; "
+        "DELETE FROM login_session", port=port)
     for item in manifest["files"]:
         relative = Path(item["path"])
         destination = target_root / relative

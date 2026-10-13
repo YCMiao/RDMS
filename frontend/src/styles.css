@@ -559,3 +559,24 @@ summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
   .home-orbit-control { top:48%; width:100%; }
   .home-vignette { background:linear-gradient(180deg,var(--bg),transparent 85%); opacity:.45; }
 }
+
+.auth-screen { min-height: 100dvh; display: grid; place-items: center; padding: 32px 16px; background: radial-gradient(ellipse at 20% 15%, var(--copper-soft), transparent 65%), var(--surface); }
+.auth-card { width: min(100%, 440px); padding: 36px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 16px 60px #0000000b; }
+.auth-brand { display: flex; align-items: center; gap: 12px; color: var(--copper); margin-bottom: 28px; font-size: 20px; font-weight: 600; }
+.auth-brand small { display: block; font-size: 12px; color: var(--muted); font-weight: 400; }
+.auth-card h1 { font-size: 24px; margin: 0 0 8px; }
+.auth-intro { color: var(--muted); margin-bottom: 24px; }
+.auth-card form, .auth-account form { display: grid; gap: 14px; }
+.auth-card label, .auth-account label { display: grid; gap: 6px; }
+.auth-card input, .auth-account input { width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--paper); }
+.auth-card small { color: var(--muted); }
+.auth-submit { min-height: 44px; margin-top: 6px; background: var(--copper); color: var(--surface-raised); border: 0; border-radius: 8px; font-weight: 600; }
+.auth-switch { display: block; margin: 20px auto 0; border: 0; background: transparent; color: var(--copper); padding: 6px; }
+.auth-error { color: var(--ink); background: var(--copper-soft); padding: 12px; border-radius: 8px; margin: 0; }
+.auth-account { max-width: 520px; margin: 32px; padding: 24px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-raised); }
+.auth-banner { padding: 12px; background: var(--copper-soft); margin: 0; }
+.account-name { margin: 0 0 8px; overflow-wrap: anywhere; }
+@media (max-width: 480px) { .auth-card { padding: 24px; } .auth-account { margin: 16px; } }
+
+.mobile-logout { display: none; }
+@media (max-width: 900px) { .mobile-logout { display: block; flex-shrink: 0; padding: 6px; } }

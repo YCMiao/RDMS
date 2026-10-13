@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from app.api.auth import router as auth_router
 from app.api.compound_chemistry import router as compound_chemistry_router
 from app.api.discovery import router as discovery_router
 from app.api.files import router as files_router
@@ -33,6 +34,7 @@ async def record_error(request: Request, exc: RecordError) -> JSONResponse:
     )
 
 
+app.include_router(auth_router, prefix="/api")
 app.include_router(health_router, prefix="/api")
 app.include_router(notebooks_router, prefix="/api")
 app.include_router(records_router, prefix="/api")

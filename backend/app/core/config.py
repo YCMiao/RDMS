@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     upload_root: Path = Path("/data/uploads")
     max_upload_bytes: int = Field(default=104_857_600, gt=0)
     log_level: str = "INFO"
+    auth_cookie_secure: bool = False
     cas_common_chemistry_api_key: str | None = None
 
     @field_validator("app_timezone")

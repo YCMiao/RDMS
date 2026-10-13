@@ -350,7 +350,7 @@ def bulk_tag_compounds(session: Session, payload: CompoundBulkTag) -> dict[str, 
     session.execute(
         insert(Tag)
         .values(name=payload.name, normalized_name=payload.name.casefold())
-        .on_conflict_do_nothing(index_elements=[Tag.normalized_name])
+        .on_conflict_do_nothing(index_elements=[Tag.owner_id, Tag.normalized_name])
     )
     tag = session.scalar(
         select(Tag)

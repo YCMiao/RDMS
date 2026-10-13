@@ -95,3 +95,7 @@ namespace、year、next_value 保存历史计数及样品计数。当前样品�
 索引：唯一业务编号、全部外键、实验 date/id、文件 uploaded_at/id、deleted_at 和关系联查组合索引。MVP 子串搜索使用参数化 ILIKE 并转义通配符；不引入搜索引擎，不宣称普通 B-tree 加速任意子串。
 
 所有 schema 修改通过 Alembic；测试从空 PostgreSQL 升级到 head。生产不自动 downgrade，不在已有数据上重建初始迁移。自动生成迁移必须人工检查类型、约束和数据兼容性。
+
+## 账号与数据归属
+
+迁移 `7d3a1b9c602e` 增加 Account、LoginSession、AuthRate；Notebook、Experiment、Compound、Sample、Reaction、ReactionComponent、FileAsset、Tag 增加 owner_id。首个注册事务接收所有无归属历史数据，后续账号独立。Tag normalized_name 按 owner_id 唯一；关联表通过父实体行级策略限制访问。原全局编号不重写。归属不允许通过业务请求修改，详情见 [账号说明](authentication.md)。
