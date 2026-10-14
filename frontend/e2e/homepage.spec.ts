@@ -93,3 +93,28 @@ test("普通动画模式下光标移动不改变圆盘视角", async ({ page }) 
     await expect(canvas).toHaveAttribute("data-orbit-anchor", anchor!)
   }
 })
+
+test("拖拽刷新频率高于空闲动画", async ({ page }) => {
+  await page.clock.install()
+  await page.emulateMedia({ reducedMotion: "no-preference" })
+  await page.goto("/")
+  const canvas = page.locator(".home-scene canvas")
+  await expect(canvas).toHaveAttribute("data-motion", "running")
+  await canvas.evaluate(element => {
+    const ctx = (element as HTMLCanvasElement).getContext("2d")!
+    const fill = ctx.fillRect.bind(ctx)
+    let calls = 0
+    ctx.fillRect = (...args) => { element.setAttribute("data-paints", String(++calls)); fill(...args) }
+  })
+  await page.clock.runFor(1000)
+  const idle = Number(await canvas.getAttribute("data-paints"))
+  const area = (await page.locator(".home-orbit-control").boundingBox())!
+  await page.mouse.move(area.x + area.width * .7, area.y + area.height * .5)
+  await page.mouse.down()
+  const before = Number(await canvas.getAttribute("data-paints"))
+  await page.clock.runFor(1000)
+  const active = Number(await canvas.getAttribute("data-paints")) - before
+  await page.mouse.up()
+  expect(idle).toBeGreaterThan(0)
+  expect(active).toBeGreaterThan(idle * 1.5)
+})

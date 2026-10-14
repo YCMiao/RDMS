@@ -76,7 +76,7 @@ export function createSpaceScene(canvas: HTMLCanvasElement, control: HTMLElement
     const count = mobile ? 1000 : points.length;
     for (let i = 0; i < count; i++) {
       const point = points[i];
-      const a = point.angle + time * (.018 + (1.1 - point.radius) * .012);
+      const a = point.angle + time * 1.6 * (.018 + (1.1 - point.radius) * .012);
       const ripple = Math.sin(a * 3 + time * .12) * .022;
       const p = project(Math.cos(a) * (point.radius + ripple), Math.sin(a) * (point.radius + ripple), point.depth + Math.sin(a * 2 + time * .08) * .045, radius, cx, cy);
       projected.push({ ...p, point });
@@ -94,7 +94,7 @@ export function createSpaceScene(canvas: HTMLCanvasElement, control: HTMLElement
       ctx.fillStyle = `rgba(${rgb},${opacity})`; ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.fill();
     }
     // One small moving highlight gives the eye a calm point to follow.
-    const a = time * .095 + .32;
+    const a = time * 1.6 * .095 + .32;
     const beacon = project(Math.cos(a) * 1.38, Math.sin(a) * 1.38, 0, radius, cx, cy);
     ctx.strokeStyle = `rgba(${palette.orbit},.28)`;
     ctx.lineWidth = .8; ctx.beginPath(); ctx.arc(beacon.x, beacon.y, 6, 0, Math.PI * 2); ctx.stroke();
@@ -103,7 +103,8 @@ export function createSpaceScene(canvas: HTMLCanvasElement, control: HTMLElement
   function animate(now: number) {
     frame = 0;
     if (paused || !visible) return;
-    if (!last || now - last >= 1000 / 30) {
+    // Follow display refresh while dragging or coasting; idle rendering stays economical.
+    if (drag || Math.abs(velocity) > .02 || !last || now - last >= 1000 / 30) {
       const dt = last ? Math.min((now - last) / 1000, .08) : 0;
       time += dt;
       if (!drag) {
@@ -156,7 +157,8 @@ export function createSpaceScene(canvas: HTMLCanvasElement, control: HTMLElement
       rotation += delta;
       const dt = Math.max((event.timeStamp - drag.at) / 1000, .016);
       velocity = Math.max(-4, Math.min(4, delta / dt));
-      draw();
+      // Coalesce pointer events into the next display frame. Reduced motion still permits direct manipulation.
+      if (paused) draw();
     }
     drag.angle = angle; drag.at = event.timeStamp;
   }, { signal });
