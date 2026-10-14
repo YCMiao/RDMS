@@ -70,3 +70,26 @@ test("首页五色双主题与窄屏外观控制", async ({ page }) => {
     await page.screenshot({ path: `test-results/home-${width}.png`, fullPage: true })
   }
 })
+
+test("普通动画模式下光标移动不改变圆盘视角", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" })
+  await page.goto("/")
+  const canvas = page.locator(".home-scene canvas")
+  await expect(canvas).toHaveAttribute("data-motion", "running")
+  // The orbit anchor is independent of ambient particle motion, but moves when tilted.
+  await canvas.evaluate(element => {
+    const ctx = (element as HTMLCanvasElement).getContext("2d")!
+    const move = ctx.moveTo.bind(ctx)
+    ctx.moveTo = (x, y) => {
+      (element as HTMLElement).dataset.orbitAnchor = JSON.stringify([x, y])
+      move(x, y)
+    }
+  })
+  await expect(canvas).toHaveAttribute("data-orbit-anchor", /\[/)
+  const anchor = await canvas.getAttribute("data-orbit-anchor")
+  for (const [x, y] of [[400, 120], [1100, 600]]) {
+    await page.mouse.move(x, y)
+    await page.waitForTimeout(300)
+    await expect(canvas).toHaveAttribute("data-orbit-anchor", anchor!)
+  }
+})

@@ -86,3 +86,9 @@ git show 48c4d74:docs/verification.md
 - 删除设置页独立的账号密码卡片。修改密码改为复用 record-dialog、record-form 和现有 Button 的弹窗，校验错误和成功反馈留在弹窗；关闭清空输入，不改变当前页面。弹窗挂载在页面根部，调整屏幕尺寸时保持可见；关闭后聚焦当前可见的账号入口。
 - 最终 `RDMS_CHECK_CACHED_DEPS=1 scripts/check.sh all` 退出 0：后端 71、前端 42、隔离浏览器 26 项；日志 `/tmp/rdms-account-menu-check-final.log`。新增浏览器验证菜单键盘/外部关闭、改密/退出流程、密码不一致、关闭清空、弹窗打开时调整屏幕尺寸，以及浅色/深色/390px 布局。截图 `frontend/test-results/account-menu-desktop.png` 与 `account-password-1280-light.png`、`account-password-1280-dark.png`、`account-password-390-light.png` 已目视检查，手机关闭按钮换行已修正。
 - 已仅更新本机前端（`docker compose up --build --no-deps -d frontend`），部署日志 `/tmp/rdms-account-menu-deploy.log`。正式入口与新菜单/弹窗静态资源核验通过，后端 ready 为 200；未重启后端、未执行迁移或修改真实账号/科研资料。
+
+## 首页固定观察角度（2026-10-14）
+
+- 修改前基线 `08dc78f` 保存原有账号菜单工作。按用户要求删除未点按时的光标视角随动，观察角度固定；保留慢速动画、拖拽轴向旋转和松开后的惯性。
+- 完整缓存模式 `scripts/check.sh all` 退出 0：后端 71、前端 42、隔离浏览器 27 项通过。新增普通动画模式下光标移动不改变轨道投影的验证，原拖拽用例继续通过；日志 `/tmp/rdms-fixed-disc-check.log`。
+- 仅更新正式前端，部署日志 `/tmp/rdms-fixed-disc-deploy.log`；前端资源及健康检查返回 200。未修改真实业务数据或上传文件。

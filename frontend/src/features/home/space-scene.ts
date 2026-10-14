@@ -13,7 +13,7 @@ export function createSpaceScene(canvas: HTMLCanvasElement, control: HTMLElement
     const get = (key: string) => css.getPropertyValue(key).trim();
     palette = { light:document.documentElement.dataset.theme === "light", bg:get("--bg"), glow:get("--scene-glow"), orbit:get("--scene-orbit"), particle:get("--scene-particle"), bright:get("--scene-bright"), warm:get("--scene-warm"), accent:get("--accent") };
   }
-  let tilt = .91, spin = -.54, targetTilt = tilt, targetSpin = spin;
+  const tilt = .91, spin = -.54;
   let drag: { id: number; angle: number | null; at: number } | null = null;
   let rotation = 0, velocity = 0;
   let seed = 71;
@@ -109,9 +109,6 @@ export function createSpaceScene(canvas: HTMLCanvasElement, control: HTMLElement
       if (!drag) {
         rotation += velocity * dt;
         velocity *= Math.exp(-2.4 * dt);
-        const ease = 1 - Math.exp(-5 * dt);
-        tilt += (targetTilt - tilt) * ease;
-        spin += (targetSpin - spin) * ease;
       }
       last = now;
       draw();
@@ -146,7 +143,6 @@ export function createSpaceScene(canvas: HTMLCanvasElement, control: HTMLElement
     if (!event.isPrimary || event.button !== 0 || drag) return;
     drag = { id:event.pointerId, angle:pointerAngle(event), at:event.timeStamp };
     velocity = 0;
-    targetTilt = tilt; targetSpin = spin;
     control.setPointerCapture(event.pointerId);
     control.classList.add('dragging', 'pointer-focus');
     event.preventDefault();
@@ -163,12 +159,6 @@ export function createSpaceScene(canvas: HTMLCanvasElement, control: HTMLElement
       draw();
     }
     drag.angle = angle; drag.at = event.timeStamp;
-  }, { signal });
-  window.addEventListener('pointermove', event => {
-    if (drag || event.buttons || event.pointerType === 'touch' || paused) return;
-    const rect = canvas.getBoundingClientRect();
-    targetTilt = .91 + (Math.max(0, Math.min(1, (event.clientY - rect.top) / height)) - .5) * .24;
-    targetSpin = -.54 + (Math.max(0, Math.min(1, (event.clientX - rect.left) / width)) - .5) * .18;
   }, { signal });
   control.addEventListener('pointerup', endDrag, { signal });
   control.addEventListener('pointercancel', endDrag, { signal });
