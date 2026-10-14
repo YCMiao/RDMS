@@ -1,10 +1,10 @@
 # 验收索引（更新于 2026-10-13）
 
-当前检查入口：`RDMS_CHECK_CACHED_DEPS=1 scripts/check.sh all`。2026-10-13 账号系统最终实测退出 0：后端 PostgreSQL 71 项、前端 42 项及检查/构建、隔离浏览器 25 项；包含投料联动回归。日志 `/tmp/rdms-auth-check-final.log`。独立账号备份恢复及原件完整哈希演练通过，日志 `/tmp/rdms-auth-restore-verified.log`。用户授权后正式数据库已迁移至 `7d3a1b9c602e`、前后端已更新；原业务表行内容及原件完整哈希比对一致，健康检查、未登录门禁和本机边界实测通过，未创建真实账号；结果与边界见 [PROGRESS](../PROGRESS.md)。下表保留功能证据索引，历史日期不作为当前上线状态。
+当前检查入口：`RDMS_CHECK_CACHED_DEPS=1 scripts/check.sh all`。2026-10-13 账号菜单版本最终实测退出 0：后端 PostgreSQL 71 项、前端 42 项及检查/构建、隔离浏览器 26 项；包含投料联动回归。日志 `/tmp/rdms-account-menu-check-final.log`。菜单、改密弹窗键盘/关闭/屏幕尺寸切换及三种布局验证通过，正式前端已更新。独立账号备份恢复及原件完整哈希演练通过，日志 `/tmp/rdms-auth-restore-verified.log`。用户授权后正式数据库已迁移至 `7d3a1b9c602e`、前后端已更新；原业务表行内容及原件完整哈希比对一致，健康检查、未登录门禁和本机边界实测通过，未创建真实账号；结果与边界见 [PROGRESS](../PROGRESS.md)。下表保留功能证据索引，历史日期不作为当前上线状态。
 
 | 验收 ID | 实测证据 |
 |---|---|
-| AUTH-01 | `backend/tests/test_auth.py` 验证首次旧记录归属、密码摘要、会话撤销/过期、改密、限流、跨账号详情/搜索/回收站/文件/关联与数据库角色。`frontend/src/features/auth.test.tsx` 验证门禁及退出失败，`frontend/e2e/auth.spec.ts` 验证注册、刷新、退出、登录、改密、手机布局及独立空间。恢复演练另外验证角色还原、旧会话撤销和原件一致。 |
+| AUTH-01 | `backend/tests/test_auth.py` 验证首次旧记录归属、密码摘要、会话撤销/过期、改密、限流、跨账号详情/搜索/回收站/文件/关联与数据库角色。`frontend/src/features/auth.test.tsx` 验证门禁及退出失败，`frontend/e2e/auth.spec.ts` 验证注册、刷新、账号菜单键盘/外部关闭、退出、登录、改密弹窗、关闭清空、屏幕尺寸切换、手机布局及独立空间。恢复演练另外验证角色还原、旧会话撤销和原件一致。 |
 | ENV-01 | 阶段 00：Docker 29.8.0、Compose v5.5.1、引擎、端口与磁盘实测，见 Git 历史 PROGRESS 阶段 00（检索方式在当前 PROGRESS）。 |
 | BOOT-01 | 阶段 01；阶段 08 另用 `rdms08fresh` 从空 PostgreSQL 卷迁移到 `9dd700ef716a`，db/backend 健康、frontend 运行。 |
 | CHECK-01 | 阶段 01 故意失败断言使入口非零，移除后通过；最终 `scripts/check.sh all` 退出 0。 |

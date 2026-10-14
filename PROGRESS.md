@@ -79,3 +79,10 @@ git show 48c4d74:docs/verification.md
 - 沿用本阶段已通过的后端 71、前端 42、隔离浏览器 25 项完整检查，以及正式迁移后的原记录/原件一致性核验；本次归档未修改业务代码或运行数据。
 
 - 工程已提交为 `c79ac92`；首次推送因目标仓库授权不明确被自动审批拒绝。用户随后明确确认 `YCMiao/RDMS` / `main` 为目标，目的地授权阻塞解除。远端同步采用系统既有代理和 HTTP/1.1，保留正常推送的并发更新保护。
+
+## 账号菜单与密码弹窗（2026-10-13）
+
+- 按用户截图反馈，将侧栏用户名及窄屏顶部入口统一为账号菜单；头像首字、姓名与展开指示沿用现有配色、边框和字号。点击后提供修改密码及退出登录，桌面菜单向上展开、窄屏向下展开；支持方向键、Escape、外部点击关闭和焦点回到入口。
+- 删除设置页独立的账号密码卡片。修改密码改为复用 record-dialog、record-form 和现有 Button 的弹窗，校验错误和成功反馈留在弹窗；关闭清空输入，不改变当前页面。弹窗挂载在页面根部，调整屏幕尺寸时保持可见；关闭后聚焦当前可见的账号入口。
+- 最终 `RDMS_CHECK_CACHED_DEPS=1 scripts/check.sh all` 退出 0：后端 71、前端 42、隔离浏览器 26 项；日志 `/tmp/rdms-account-menu-check-final.log`。新增浏览器验证菜单键盘/外部关闭、改密/退出流程、密码不一致、关闭清空、弹窗打开时调整屏幕尺寸，以及浅色/深色/390px 布局。截图 `frontend/test-results/account-menu-desktop.png` 与 `account-password-1280-light.png`、`account-password-1280-dark.png`、`account-password-390-light.png` 已目视检查，手机关闭按钮换行已修正。
+- 已仅更新本机前端（`docker compose up --build --no-deps -d frontend`），部署日志 `/tmp/rdms-account-menu-deploy.log`。正式入口与新菜单/弹窗静态资源核验通过，后端 ready 为 200；未重启后端、未执行迁移或修改真实账号/科研资料。

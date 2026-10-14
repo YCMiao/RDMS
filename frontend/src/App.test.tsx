@@ -6,7 +6,7 @@ import App from "./App"
 
 vi.mock("./features/auth", () => ({
   AuthGate: ({ children }: { children: (account: { id: string; username: string; display_name: string }, logout: () => Promise<void>) => unknown }) => children({ id: "test", username: "test", display_name: "测试" }, async () => {}),
-  AccountSettings: () => null,
+  AccountPasswordDialog: () => null,
 }))
 
 vi.mock("./features/home/space-scene", () => ({ createSpaceScene: () => null }))

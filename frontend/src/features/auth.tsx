@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { FormEvent, ReactNode } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { Microscope } from "lucide-react"
 
+import { Button } from "../components/ui/button"
 import { ApiError, request } from "../services/records"
 
 export type Account = { id: string; username: string; display_name: string }
@@ -76,7 +77,13 @@ export function AuthGate({ children }: { children: (account: Account, logout: ()
   </main>
 }
 
-export function AccountSettings({ account }: { account: Account }) {
+export function AccountPasswordDialog({ account, onClose }: { account: Account; onClose: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null)
+  const [saved, setSaved] = useState(false)
+  useEffect(() => {
+    if (dialog.current && !dialog.current.open) dialog.current.showModal()
+    dialog.current?.querySelector<HTMLInputElement>("input")?.focus()
+  }, [])
   const [current, setCurrent] = useState("")
   const [next, setNext] = useState("")
   const [confirmation, setConfirmation] = useState("")
@@ -88,14 +95,19 @@ export function AccountSettings({ account }: { account: Account }) {
     setBusy(true)
     try {
       await request<void>("/auth/password", { method: "POST", body: JSON.stringify({ current_password: current, new_password: next }) })
-      setCurrent(""); setNext(""); setConfirmation(""); setMessage("密码已修改，其他设备上的登录已失效。")
+      setCurrent(""); setNext(""); setConfirmation(""); setMessage("密码已修改，其他设备上的登录已失效。"); setSaved(true)
     } catch (cause) { setMessage(cause instanceof Error ? cause.message : "修改失败") }
     finally { setBusy(false) }
   }
-  return <section className="auth-account"><h2>账号与密码</h2><p>{account.display_name} · {account.username}</p><form onSubmit={event => void submit(event)}>
-    <label>当前密码<input type="password" autoComplete="current-password" value={current} onChange={event => setCurrent(event.target.value)} required maxLength={128} /></label>
-    <label>新密码<input type="password" autoComplete="new-password" value={next} onChange={event => setNext(event.target.value)} required minLength={12} maxLength={128} /></label>
-    <label>确认新密码<input type="password" autoComplete="new-password" value={confirmation} onChange={event => setConfirmation(event.target.value)} required minLength={12} maxLength={128} /></label>
-    {message && <p role="status">{message}</p>}<button disabled={busy}>{busy ? "正在修改…" : "修改密码"}</button>
-  </form></section>
+  return <dialog ref={dialog} className="record-dialog account-password-dialog" aria-labelledby="account-password-title" onClose={onClose} onCancel={event => { if (busy) event.preventDefault() }}>
+    <div className="dialog-heading"><div><span className="eyebrow">账号安全</span><h2 id="account-password-title">修改密码</h2><p>{account.display_name} · {account.username}</p></div><Button type="button" variant="outline" disabled={busy} onClick={() => dialog.current?.close()}>关闭</Button></div>
+    {saved ? <div className="password-success"><p role="status">{message}</p><Button type="button" onClick={() => dialog.current?.close()}>完成</Button></div> : <form className="record-form" onSubmit={event => void submit(event)}>
+      <label>当前密码<input autoFocus type="password" autoComplete="current-password" value={current} onChange={event => setCurrent(event.target.value)} required maxLength={128} /></label>
+      <label>新密码<input type="password" autoComplete="new-password" value={next} onChange={event => setNext(event.target.value)} required minLength={12} maxLength={128} aria-describedby="password-hint" /></label>
+      <p id="password-hint" className="password-hint">使用至少 12 个字符的密码。</p>
+      <label>确认新密码<input type="password" autoComplete="new-password" value={confirmation} onChange={event => setConfirmation(event.target.value)} required minLength={12} maxLength={128} /></label>
+      {message && <p role="alert" className="password-error">{message}</p>}
+      <div className="form-actions"><Button type="button" variant="outline" disabled={busy} onClick={() => dialog.current?.close()}>取消</Button><Button disabled={busy}>{busy ? "正在修改…" : "保存新密码"}</Button></div>
+    </form>}
+  </dialog>
 }

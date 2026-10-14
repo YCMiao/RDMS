@@ -21,7 +21,8 @@ import { useTheme } from "./hooks/use-theme"
 import { checkHealth, type HealthStatus } from "./services/health"
 import { HomePage } from "./features/home/home-page"
 import { Appearance } from "./features/home/appearance"
-import { AuthGate, AccountSettings, type Account } from "./features/auth"
+import { AuthGate, type Account } from "./features/auth"
+import { AccountMenu } from "./features/account-menu"
 import { usePalette } from "./hooks/use-palette"
 
 const navigation = [
@@ -84,8 +85,7 @@ function AuthenticatedApp({ account, logout }: { account: Account; logout: () =>
           ))}
         </nav>
         <div className="sidebar-footer">
-          <p className="account-name">{account.display_name}</p>
-          <button type="button" onClick={() => void logout()}>退出登录</button>
+          <AccountMenu account={account} logout={logout} />
           <Appearance {...appearance} />
         </div>
       </aside>
@@ -96,7 +96,7 @@ function AuthenticatedApp({ account, logout }: { account: Account; logout: () =>
             <input aria-label="全局搜索" maxLength={200} value={search} onChange={event => setSearch(event.target.value)} placeholder="搜索实验、化合物或编号" />
             <button type="submit">搜索</button>
           </form>
-          <button className="mobile-logout" type="button" aria-label="退出登录" onClick={() => void logout()}>退出</button>
+          <AccountMenu account={account} logout={logout} mobile />
           <details className="mobile-appearance"><summary aria-label="外观设置"><Settings size={18} /></summary><Appearance {...appearance} /></details>
         </header>
         <Routes>
@@ -108,7 +108,7 @@ function AuthenticatedApp({ account, logout }: { account: Account; logout: () =>
           <Route path="/compounds/import" element={<CompoundImportPage />} />
           <Route path="/compounds/new" element={<RecordEditor kind="compounds" />} />
           <Route path="/compounds/:id" element={<RecordEditor kind="compounds" />} />
-          <Route path="/settings" element={<><AccountSettings account={account} /><TagManager /></>} />
+          <Route path="/settings" element={<TagManager />} />
           <Route path="/samples" element={<SamplesPage />} />
           <Route path="/samples/:id" element={<SampleEditor />} />
           <Route path="/files" element={<FilesPage />} />
