@@ -11,7 +11,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "check": "npm run lint && npm run typecheck && npm run test:run && npm run build",
-    "generate:api": "openapi-typescript http://frontend/api/openapi.json -o src/types/api.generated.ts"
+    "generate:api": "openapi-typescript http://frontend/api/openapi.json -o src/types/api.generated.ts",
+    "build:demo": "tsc -b && vite build --mode demo --config vite.demo.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "1.2.3",

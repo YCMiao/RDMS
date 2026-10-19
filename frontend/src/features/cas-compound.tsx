@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react"
 import { Button } from "../components/ui/button"
 import { formatDecimal } from "../lib/format-mass"
 import { validCas } from "../lib/reagents"
-import { request, type Compound } from "../services/records"
+import { request, resourceUrl, type Compound } from "../services/records"
 import type { components } from "../types/api.generated"
 import { CasStructureButton } from "./compound-chemistry"
 
@@ -37,5 +37,5 @@ export function CasCompoundSearch({ onSelect, onSearching, onEdited }: { onSelec
 }
 
 export function CasCompoundPreview({ selected, disabled, onSaved }: { selected: CasSelection; disabled: boolean; onSaved: (item: Compound) => void }) {
-  return <div className="reagent-preview">{selected.structure_molfile && <img className="reagent-structure-preview" src={"id" in selected ? `/api/compounds/${selected.id}/structure.svg?v=${selected.version}` : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(selected.svg || "")}`} alt={`${selected.name || "试剂"} 的化学结构`} />}<strong>{selected.name || "系统名称待补充"}</strong>{!selected.name && <small>系统名称待补充</small>}{"codename" in selected && selected.codename && <small>代号：{selected.codename}</small>}<dl><div><dt>化学式</dt><dd><ChemicalFormula value={selected.molecular_formula} /></dd></div><div><dt>CAS</dt><dd>{selected.cas_number || "—"}</dd></div><div><dt>Mw (g/mol)</dt><dd>{formatDecimal(selected.molecular_weight) || "—"}</dd></div></dl>{"id" in selected && selected.cas_number && !selected.structure_molfile && <CasStructureButton item={selected} disabled={disabled} onSaved={onSaved} />}{"source_url" in selected && <a className="text-link" href={selected.source_url} target="_blank" rel="noreferrer">查看 PubChem 资料</a>}</div>
+  return <div className="reagent-preview">{selected.structure_molfile && <img className="reagent-structure-preview" src={"id" in selected ? resourceUrl(`/compounds/${selected.id}/structure.svg?v=${selected.version}`) : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(selected.svg || "")}`} alt={`${selected.name || "试剂"} 的化学结构`} />}<strong>{selected.name || "系统名称待补充"}</strong>{!selected.name && <small>系统名称待补充</small>}{"codename" in selected && selected.codename && <small>代号：{selected.codename}</small>}<dl><div><dt>化学式</dt><dd><ChemicalFormula value={selected.molecular_formula} /></dd></div><div><dt>CAS</dt><dd>{selected.cas_number || "—"}</dd></div><div><dt>Mw (g/mol)</dt><dd>{formatDecimal(selected.molecular_weight) || "—"}</dd></div></dl>{"id" in selected && selected.cas_number && !selected.structure_molfile && <CasStructureButton item={selected} disabled={disabled} onSaved={onSaved} />}{"source_url" in selected && <a className="text-link" href={selected.source_url} target="_blank" rel="noreferrer">查看 PubChem 资料</a>}</div>
 }

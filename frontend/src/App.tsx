@@ -49,6 +49,7 @@ function Placeholder({ title }: { title: string }) {
 }
 
 export default function App() {
+  if (import.meta.env.MODE === "demo") return <AuthenticatedApp account={{ id: "offline", username: "researcher", display_name: "研究员" }} logout={async () => { window.location.hash = "/"; window.location.reload() }} />
   return <AuthGate>{(account, logout) => <AuthenticatedApp key={account.id} account={account} logout={logout} />}</AuthGate>
 }
 

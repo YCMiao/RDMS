@@ -1,3 +1,4 @@
+import { demoRequest, demoResourceUrl } from "../demo/store"
 import type { components } from "../types/api.generated"
 
 export type Experiment = components["schemas"]["ExperimentOut"]
@@ -22,6 +23,9 @@ export class ApiError extends Error {
 }
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (import.meta.env.MODE === "demo") {
+    return demoRequest<T>(path, init)
+  }
   let response: Response
   try {
     response = await fetch(`/api${path}`, {
@@ -46,4 +50,8 @@ export function query(parameters: Record<string, string | number | undefined>): 
     if (value !== undefined && value !== "") search.set(key, String(value))
   }
   return search.toString()
+}
+
+export function resourceUrl(path: string): string {
+  return import.meta.env.MODE === "demo" ? demoResourceUrl(path) : `/api${path}`
 }

@@ -2,6 +2,10 @@
 
 RDMS 是面向个人化学与生命科学研究的本机数据管理系统，提供实验、化合物、标签、样品、反应、原始文件、搜索、总览、规则摘要和回收站，并提供手动备份与隔离恢复工具。
 
+## 离线演示分发
+
+需要向他人展示时，可分发 `demo/dist/RDMS-Demo.zip` 或其中的 HTML 单文件；双击打开，无需安装、服务器、联网或登录，刷新即恢复预置数据。界面复用正式版，内置虚构记录。构建与演示范围见 [离线演示说明](demo/README.md)。
+
 ## 运行基线
 
 - Docker Desktop 29.8.0、Docker Compose v5.5.1（阶段 00 实测环境）
@@ -62,6 +66,8 @@ docker compose --profile test run --rm frontend-test npm run generate:api
 ```
 
 ## 工程维护入口
+
+Mac／Windows 本地应用的后续开发安排见 [桌面应用开发指南](docs/desktop-development-guide.md)，包含独立工作树、分阶段任务、数据边界和验收标准；当前为计划，尚未完成桌面化。
 
 运行、更新和备份以本 README 为入口；当前验证见 [验收索引](docs/verification.md)，工程文件取舍与清理候选见 [上线前审计](docs/release-audit.md)。源码、完整 Alembic 迁移链、依赖清单、测试和维护脚本均需保留，以便重建、升级和恢复。后端默认构建 `runtime` 阶段，仅包含运行依赖与迁移；`backend-test` 使用独立 `test` 阶段。前端正式镜像仅包含 nginx 和构建后的静态资源。
 

@@ -53,3 +53,9 @@
 当前完整检查覆盖记录本、实验复制、统一备注、温度/时间模式、反应顺序、限制反应物与自动收率、溶剂分区、CAS 建档与补全、批量标签、相邻导航，以及粒子首页与全局外观。测试位置为 `backend/tests/`、`frontend/src/**/*.test.*`、`frontend/e2e/`。
 
 2026-09-22 至 2026-10-12 的逐次部署、备份、回滚基线和旧测试数量保存在 Git：`git show 48c4d74:PROGRESS.md`、`git show 48c4d74:docs/verification.md`。下表中的阶段和日期是历史证据，不代表本次重新执行了备份恢复或外部 API 联调；历史 `/tmp` 日志可能已失效。
+
+## 离线分发演示（2026-10-18）
+
+- `DEMO-01`：`scripts/build-demo.sh` 构建独立 HTML 与 ZIP；`frontend/e2e-demo/offline.spec.ts` 在无网络容器里直接以 `file://` 验证。Chromium / WebKit 12 项全通过，覆盖原界面、免登录、拒绝持久化 API、零 HTTP 请求/运行异常、刷新重置、结构与 CAS 示例、实验复制编号、文件下载字节、摘要、删除恢复、投料联动、标签及窄屏。WebKit 不启用会阻断本地文件的 offline 模拟，容器本身仍无网络。最终日志 `/tmp/rdms-demo-browser-final.log`。
+- 本次完整正式版本回归：`RDMS_CHECK_CACHED_DEPS=1 scripts/check.sh all` 退出 0，后端 71、前端 42、浏览器 28 项。日志 `/tmp/rdms-offline-demo-check-final.log`；隔离数据库和临时文件目录未涉及真实资料。
+- ZIP 完整性、包内外 HTML 字节一致、内联依赖许可和无个人绝对路径检查通过；浅/深色、首页/实验详情及 390px 截图已核对。交付与演示范围见 [离线演示说明](../demo/README.md) 和 [当前进度](../PROGRESS.md)。

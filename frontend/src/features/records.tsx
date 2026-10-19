@@ -220,9 +220,9 @@ function RecordEditorContent({ kind }: { kind: Kind }) {
     const confirmNavigation = (event: MouseEvent) => {
       if (event.defaultPrevented || !(event.target instanceof Element)) return
       const link = event.target.closest("a[href]")
-      if (!link || link.getAttribute("href")?.startsWith("#")) return
+      if (!link || (import.meta.env.MODE !== "demo" && link.getAttribute("href")?.startsWith("#"))) return
       const destination = new URL(link.getAttribute("href") || "", window.location.href)
-      if (destination.origin === window.location.origin && destination.pathname !== window.location.pathname && (busy || ((dirty || labPending.current?.()) && !window.confirm("有未保存的修改，确定离开？")))) {
+      if (destination.origin === window.location.origin && (import.meta.env.MODE === "demo" ? destination.hash.split("?")[0] !== window.location.hash.split("?")[0] : destination.pathname !== window.location.pathname) && (busy || ((dirty || labPending.current?.()) && !window.confirm("有未保存的修改，确定离开？")))) {
         event.preventDefault()
         event.stopPropagation()
       }

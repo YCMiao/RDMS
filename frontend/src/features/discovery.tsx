@@ -42,7 +42,9 @@ export function SummaryPanel({ experimentId, experimentCode }: { experimentId: s
   async function generate() {
     setLoading(true); setError("")
     try {
-      const response = await fetch(`/api/experiments/${experimentId}/summary?format=markdown`)
+      const response = import.meta.env.MODE === "demo"
+        ? new Response(await request<string>(`/experiments/${experimentId}/summary?format=markdown`))
+        : await fetch(`/api/experiments/${experimentId}/summary?format=markdown`)
       if (!response.ok) throw new Error("Markdown 摘要读取失败")
       const content = await response.text()
       setMarkdown(content)

@@ -11,7 +11,7 @@ function applyTheme(theme: Theme) {
 
 export function useTheme() {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const saved = window.localStorage.getItem(STORAGE_KEY)
+    const saved = import.meta.env.MODE === "demo" ? null : window.localStorage.getItem(STORAGE_KEY)
     return saved === "light" || saved === "dark" ? saved : "system"
   })
 
@@ -25,6 +25,7 @@ export function useTheme() {
 
   function setTheme(next: Theme) {
     setThemeState(next)
+    if (import.meta.env.MODE === "demo") return
     if (next === "system") window.localStorage.removeItem(STORAGE_KEY)
     else window.localStorage.setItem(STORAGE_KEY, next)
   }
